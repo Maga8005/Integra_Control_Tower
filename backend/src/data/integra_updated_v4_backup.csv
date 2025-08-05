@@ -1,0 +1,158 @@
+Nombre,Completado,Persona asignada,Fecha de vencimiento,Proceso,1. ESTADO Firma Cotización,1. Cotización PDF,5. ESTADO Compra Int,5. Doc Compra Int,3. ESTADO Doc Legal General,3. Doc Legales Integra,2. ESTADO factura Cuota Operacional,2. Factura Cuota Operacional,Item ID,6. Link de Cotización,6. GIRO #,7. Estrategia / Intereses,7. ESTADO Estrategia,9. ESTADO Proforma / Factura final,9. Proforma / Factura final,10. ESTADO Giro Proveedor,10. Swift de Pago Proveedor,14.Monto Pre/Liberación,5. Proforma Proveedor,4. Soporte Pago CO Cliente,14. Fecha de Liberación,4. ESTADO pago Cuota Operacional,10. Info por GIRO Proveedor,5. Info Gnal + Info Compra Int,6. ESTADO Link Cotización,15. Equipo Comercial,1. Docu. Cliente
+<#C7R2KL9NETC|>,,,,Aprobación de Cotización,Listo,FLV5NW1124E,Comité de giro,FAPH2CF4TJ2,,F7P8EUCVK7L,,FR7WSB1YNND,C7R2KL9NETC,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example1/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Proveedor Mercancía,FAW2GF43LKL,,Listo - Factura Final,FI75VWJ1SNB,Listo - Pago Confirmado,FRZARS4JG08,75000 USD,FPVSJR8EVWI,F9UAOA8TWB4,2025-08-08,,- VALOR SOLICITADO: 75000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 70% del total,- CLIENTE: INDUSTRIAL LTD\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: TURQUIA\n- VALOR TOTAL DE COMPRA: 75000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 30% ADVANCE / 70% AGAINST BL\n- ICOTERM COMPRA: FOB - SHANGHAI\n- ICOTERM VENTA: DAP - ZONA FRANCA,,lucia.herrera@finkargo.com,OOPA028673PUQ
+<#CYGTLBJMT5F|>,,,,Docu Legal Gnal / Cuota Op / Nego Int,Listo,FVRPWYGXIKH,En progreso,F26MSZF2RKD,,FJC65IH0J3L,Solicitado,FKQE0SB4PTA,CYGTLBJMT5F,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example2/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 2 / Financiamiento,F0ERE1TP0IR,,En progreso,F97S8ZGJWT3,En Progreso ( Listo Pago FK),FVU6JNHWRLN,25000 EUR,FYN4NC08MMB,FASJQDE70EW,2025-11-02,,- VALOR SOLICITADO: 25000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 70% del total,- CLIENTE: ASIA EXPORTS\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: CHINA\n- VALOR TOTAL DE COMPRA: 25000\n- MONEDA DE PAGO: EUR\n- TÉRMINOS DE PAGO: 50% ADVANCE / 50% AGAINST BL\n- ICOTERM COMPRA: FOB - SHANGHAI\n- ICOTERM VENTA: DAP - ZONA FRANCA,,diego.santos@finkargo.com,UPIN924835AHU
+<#CRMYC9MUXGM|>,,,,Componente No 1 Plataforma - Giro 1 Proveedor Internacional,Listo,FK6B7VFTMTJ,Lista Negociación,FRCFJ9X6M4E,Listo,F4KV8RJ9EEJ,Listo,F25WOVJ7C1T,CRMYC9MUXGM,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example3/edit"",""attachment"":{},""displayAsUrl"":false}",Liberación 3,FE6I5QZQKL4,Solicitado,Listo - Proforma,F7GDBM0XHTS,En revisión Mesa Control,FOTQKLZ2Q2S,150000 USD,FSL4MZ7GWK1,F7RPNZLVO0V,2025-03-29,Solicitado,"- VALOR SOLICITADO: 75000 - NÚMERO DE GIRO: Liberación completa - PORCENTAJE DE GIRO: 100% del total","- CLIENTE: TECH SOLUTIONS - PAÍS IMPORTADOR: MÉXICO - PAÍS EXPORTADOR: CHINA - VALOR TOTAL DE COMPRA: 75000 - MONEDA DE PAGO SOLICITADO: USD - TÉRMINOS DE PAGO: LIBERACIÓN COMPLETA - BENEFICIARIO: BANCO INTERNACIONAL - BANCO: 1234567 - DIRECCIÓN: SHANGHAI 12345 - NÚMERO DE CUENTA: 987654321 - SWIFT: ICBKCNBJ - ICOTERM COMPRA: FOB - SHANGHAI - ICOTERM VENTA: DAP - ZONA FRANCA - Liberación 1: Capital 30000 USD Fecha 2025-06-15 - Liberación 2: Capital 25000 USD Fecha 2025-08-20 - Liberación 3: Capital 20000 USD Fecha 2025-10-10",Solicitado,ana.lopez@finkargo.com,BVAU461954EUD
+<#CV8TA36DW4J|>,,,,Componente No 2 Plataforma y Giro 2 Proveedor Internacional,Listo,F8TGNQD5ULK,Aprobada,FE4PPQPWQCE,,F53N08NZECC,,FSZ8UDQWH2Y,CV8TA36DW4J,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example4/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Financiamiento,FLQHP47SGDY,,Listo - Proforma,FI4WCN7HDJM,Por aprobar,FRT1ZXO1NRY,200000 EUR,FMTM6Y1YH5U,FEUK6T0YWGZ,2025-05-21,,- VALOR SOLICITADO: 200000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 50% del total,- CLIENTE: GLOBAL TECH\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: ALEMANIA\n- VALOR Listo DE COMPRA: 200000\n- MONEDA DE PAGO: EUR\n- TÉRMINOS DE PAGO: 50% ADVANCE / 50% AGAINST BL\n- ICOTERM COMPRA: FOB - HAMBURG\n- ICOTERM VENTA: DAP - ZONA FRANCA,,miguel.torres@finkargo.com,ZXMV739462LMP
+<#CBHE4W5EXT9|>,,,,Componente Financiamiento Logístico,Listo,F7Y5M4C8DHI,Solicitado,F9F8CWBVJLU,En progreso,F1TPHQXM8EZ,Listo,F84N63C2RTW,CBHE4W5EXT9,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example5/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 2 / Proveedor Mercancía,FKYL46DC9BD,En progreso,Solicitado,FZGFPABVDSL,Solicitado a Tesorería,F5G2FJZWPBT,120000 USD,FW3D8YQKRFN,F8LGQ6XWRXH,2025-07-16,Solicitado,- VALOR SOLICITADO: 120000\n- NÚMERO DE GIRO: 2° Giro a Proveedor\n- PORCENTAJE DE GIRO: 30% del total,- CLIENTE: MANUFACTURING PLUS\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: VIETNAM\n- VALOR TOTAL DE COMPRA: 120000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 40% ADVANCE / 60% AGAINST BL\n- ICOTERM COMPRA: FOB - HO CHI MINH\n- ICOTERM VENTA: DAP - ZONA FRANCA,En progreso,sofia.martinez@finkargo.com,PLKT584029WQR
+<#CL3J9F7NRST|>,,,,Liberación de Mercancía,Listo,FQMZ8YU6CTK,Lista Negociación,F2LDRQ5WXGY,Listo,FN6HTGZAW7B,Listo,FVKJ3RQMFPS,CL3J9F7NRST,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example6/edit"",""attachment"":{},""displayAsUrl"":false}",Liberación 2,F9T5R2LWQHP,Listo,Listo - Factura Final,F4LKZB8YTGN,Listo - Pago Confirmado,FH9C5XQPWRT,180000 EUR,FX7K2MVQBSG,F6NJRD4YPLC,2025-10-25,Listo,"- VALOR SOLICITADO: 120,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total","- CLIENTE: GLOBAL IMPORTS
+- PAÍS IMPORTADOR: MÉXICO
+- PAÍS EXPORTADOR: ALEMANIA
+- VALOR TOTAL DE COMPRA: 120,000
+- MONEDA DE PAGO SOLICITADO: EUR
+- TÉRMINOS DE PAGO: LIBERACIÓN COMPLETA
+*******DATOS BANCARIOS*******
+- BENEFICIARIO: BANCO INTERNACIONAL
+- BANCO: 1234567
+- DIRECCIÓN: HAMBURG 12345
+- NÚMERO DE CUENTA: 987654321
+- SWIFT: DEUTDEFF
+*************************
+- ICOTERM COMPRA: FOB - HAMBURG
+- ICOTERM VENTA: DAP - ZONA FRANCA
+- OBSERVACIONES: Liberación completa de mercancía mediante liberaciones parciales
+-----------------------
+- VALOR SOLICITADO: 120,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total
+---------------
+- Liberación 1
+- Capital: 70,000 EUR
+- Fecha: 2025-07-01
+- Liberación 2
+- Capital: 50,000 EUR
+- Fecha: 2025-09-15
+---------
+NPS
+- Inconvenientes: No
+- Descripción inconvenientes: Proceso completado exitosamente, mercancía liberada en su totalidad mediante 2 liberaciones parciales
+- Calificación (1 mala - 5 buena): 5",Listo,carlos.rodriguez@finkargo.com,HYZT396741BNM
+<#CM8P6D2QVWX|>,,,,Cierre de Operación,Listo,F3R7N9KZBTL,Aprobada,FGPW5QJ8VCM,Listo,FK2Y4HXRD8Z,Listo,F7W9QTLZNPS,CM8P6D2QVWX,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example7/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Logístico,F5B8KXRMDYN,Listo,En progreso,F1QVZJ3LKRT,En Progreso ( Listo Pago FK),FPCY4MXNTGB,95000 USD,FSKH7WQPBGN,FT9L2XKQMRV,2025-01-14,Listo,- VALOR SOLICITADO: 95000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 70% del total,- CLIENTE: PACIFIC TRADE\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: JAPÓN\n- VALOR TOTAL DE COMPRA: 95000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 30% ADVANCE / 70% AGAINST BL\n- ICOTERM COMPRA: FOB - YOKOHAMA\n- ICOTERM VENTA: DAP - ZONA FRANCA,Listo,lucia.herrera@finkargo.com,QWER847295PLM
+<#CN5T8H4BLPQ|>,,,,Aprobación de Cotización,En progreso,F6D2J5MQYWH,Lista Negociación,F8TP7RQXKCN,,FY3M9LWPVZQ,,FR4X6BHNSTK,CN5T8H4BLPQ,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example8/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 2 / Financiamiento,F2G7KZPMQTX,,Listo - Proforma,FV9N4XRJCWP,En revisión Mesa Control,F8Q1MZYGTHB,160000 EUR,FL5K3YWQRDN,FB7P2XKTMQH,2025-12-05,,- VALOR SOLICITADO: 160000\n- NÚMERO DE GIRO: 2° Giro a Proveedor\n- PORCENTAJE DE GIRO: 40% del total,- CLIENTE: NORDIC SUPPLY\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: SUECIA\n- VALOR TOTAL DE COMPRA: 160000\n- MONEDA DE PAGO: EUR\n- TÉRMINOS DE PAGO: 40% ADVANCE / 60% AGAINST BL\n- ICOTERM COMPRA: FOB - STOCKHOLM\n- ICOTERM VENTA: DAP - ZONA FRANCA,,diego.santos@finkargo.com,ASDF625841NMK
+<#CQ9K3F7XBTM|>,,,,Docu Legal Gnal / Cuota Op / Nego Int,Listo,F4W8P1KQRXN,Solicitado,FGZH6TLQMBY,,F9X2NLVKPRD,Solicitado,FK5Y7WQMBZT,CQ9K3F7XBTM,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example9/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Proveedor Mercancía,F7R3NZQKXTL,,Solicitado,F2MQ8YJGVPK,Por aprobar,FW4L9XRQNBT,110000 USD,FH6T2MQYKXN,FP3Z5WLRQGT,2025-06-11,,- VALOR SOLICITADO: 110000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 50% del total,- CLIENTE: SOUTH AMERICA CO\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: BRASIL\n- VALOR TOTAL DE COMPRA: 110000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 50% ADVANCE / 50% AGAINST BL\n- ICOTERM COMPRA: FOB - SAO PAULO\n- ICOTERM VENTA: DAP - ZONA FRANCA,,ana.lopez@finkargo.com,ZXCV394728PLQ
+<#CR7X9M2KQTP|>,,,,Componente No 1 Plataforma - Giro 1 Proveedor Internacional,Listo,F8N5Q2LXRWM,Lista Negociación,F3YT6KZPQBL,Listo,FD9J4WXRMQN,Listo,F6K1PZQYTXL,CR7X9M2KQTP,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example10/edit"",""attachment"":{},""displayAsUrl"":false}",Liberación 3,F2R8NQMXZTL,Listo,En progreso,FY5P3WKQRXM,Solicitado a Tesorería,F7Q4NZLKTXR,85000 EUR,FJ6W9PQMKZX,FT1L5YRQNXM,2025-04-22,Listo,"- VALOR SOLICITADO: 90,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total","- CLIENTE: MANUFACTURING CO
+- PAÍS IMPORTADOR: MÉXICO
+- PAÍS EXPORTADOR: COREA DEL SUR
+- VALOR TOTAL DE COMPRA: 90,000
+- MONEDA DE PAGO SOLICITADO: USD
+- TÉRMINOS DE PAGO: LIBERACIÓN COMPLETA
+*******DATOS BANCARIOS*******
+- BENEFICIARIO: BANCO INTERNACIONAL
+- BANCO: 1234567
+- DIRECCIÓN: BUSAN 12345
+- NÚMERO DE CUENTA: 987654321
+- SWIFT: CZNBKRSE
+*************************
+- ICOTERM COMPRA: FOB - BUSAN
+- ICOTERM VENTA: DAP - ZONA FRANCA
+- OBSERVACIONES: Liberación completa de mercancía mediante liberaciones parciales
+-----------------------
+- VALOR SOLICITADO: 90,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total
+---------------
+- Liberación 1
+- Capital: 35,000 USD
+- Fecha: 2025-05-20
+- Liberación 2
+- Capital: 30,000 USD
+- Fecha: 2025-07-25
+- Liberación 3
+- Capital: 25,000 USD
+- Fecha: 2025-09-30
+---------
+NPS
+- Inconvenientes: No
+- Descripción inconvenientes: Proceso completado exitosamente, mercancía liberada en su totalidad mediante 3 liberaciones parciales
+- Calificación (1 mala - 5 buena): 5",Listo,miguel.torres@finkargo.com,QPOI857239WER
+<#CS2L8H6FWQX|>,,,,Componente No 2 Plataforma y Giro 2 Proveedor Internacional,Listo,F9P6M3KZQXT,Comité de giro,F4YNQL7RBXK,Listo,FH8T2LWQZNP,Listo,F1K5YXRQMTL,CS2L8H6FWQX,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example11/edit"",""attachment"":{},""displayAsUrl"":false}",Liberación 2,F6Z3NQRKXTM,Listo,Listo - Proforma,F9L4WKQPZXR,En revisión Mesa Control,FY7M2NQKZXT,140000 USD,FK8P5WQRNZL,F3T6YXRQMNK,2025-09-03,Listo,"- VALOR SOLICITADO: 150,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total","- CLIENTE: LOGISTICS PLUS
+- PAÍS IMPORTADOR: MÉXICO
+- PAÍS EXPORTADOR: JAPÓN
+- VALOR TOTAL DE COMPRA: 150,000
+- MONEDA DE PAGO SOLICITADO: EUR
+- TÉRMINOS DE PAGO: LIBERACIÓN COMPLETA
+*******DATOS BANCARIOS*******
+- BENEFICIARIO: BANCO INTERNACIONAL
+- BANCO: 1234567
+- DIRECCIÓN: TOKYO 12345
+- NÚMERO DE CUENTA: 987654321
+- SWIFT: BOTKJPJT
+*************************
+- ICOTERM COMPRA: FOB - TOKYO
+- ICOTERM VENTA: DAP - ZONA FRANCA
+- OBSERVACIONES: Liberación completa de mercancía mediante liberaciones parciales
+-----------------------
+- VALOR SOLICITADO: 150,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total
+---------------
+- Liberación 1
+- Capital: 90,000 EUR
+- Fecha: 2025-06-10
+- Liberación 2
+- Capital: 60,000 EUR
+- Fecha: 2025-08-25
+---------
+NPS
+- Inconvenientes: No
+- Descripción inconvenientes: Proceso completado exitosamente, mercancía liberada en su totalidad mediante 2 liberaciones parciales
+- Calificación (1 mala - 5 buena): 5",Listo,sofia.martinez@finkargo.com,TYUI638495REW
+<#CT4K9J2MPXQ|>,,,,Componente Financiamiento Logístico,Listo,F7Y2K5QXRNM,En progreso,FW6P9NQKZXT,Solicitado,F4L3MXQRYNK,En progreso,FZ8T6WQKNXR,CT4K9J2MPXQ,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example12/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 2 / Proveedor Mercancía,F3N8QZRKXTM,,Listo - Factura Final,F5W2KQPXZNR,En Progreso ( Listo Pago FK),FJ9M6NQRXTK,175000 EUR,FP4L7WQKZNX,F2T8YXRQMNK,2025-02-28,,- VALOR SOLICITADO: 175000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 60% del total,- CLIENTE: MEDITERRANEAN CO\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: GRECIA\n- VALOR TOTAL DE COMPRA: 175000\n- MONEDA DE PAGO: EUR\n- TÉRMINOS DE PAGO: 40% ADVANCE / 60% AGAINST BL\n- ICOTERM COMPRA: FOB - ATHENS\n- ICOTERM VENTA: DAP - ZONA FRANCA,,carlos.rodriguez@finkargo.com,ASDF529631QWE
+<#CU7P4L9NQXZ|>,,,,Liberación de Mercancía,Listo,FK3Y8WQRXNM,Aprobada,F6N2LQKZXTM,,FH9T4WXQRNK,,F2P7NQKZXTR,CU7P4L9NQXZ,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example13/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Financiamiento,FY5K6QNRXTM,,Listo - Proforma,F8W3LQKPZNR,Por aprobar,FJ1M9NQRXTK,130000 USD,F4T6YXRQMNL,FZ7L2WQKRNX,2025-01-07,,- VALOR SOLICITADO: 130000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 70% del total,- CLIENTE: AFRICAN TRADE\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: SUDÁFRICA\n- VALOR TOTAL DE COMPRA: 130000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 30% ADVANCE / 70% AGAINST BL\n- ICOTERM COMPRA: FOB - CAPE TOWN\n- ICOTERM VENTA: DAP - ZONA FRANCA,,lucia.herrera@finkargo.com,POIU742963QWE
+<#CV1N8M5QTXR|>,,,,Cierre de Operación,Listo,F8Q4K7NRXTM,Lista Negociación,F3W6PLQKZNR,,FY9L2WXQRNK,,F5T8NQKZXTR,CV1N8M5QTXR,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example14/edit"",""attachment"":{},""displayAsUrl"":false}",Liberación 3,F7K2PQNRXTM,,Listo - Factura Final,F4W9LQKZXNR,Listo - Pago Confirmado,FJ6T3NQRXTK,105000 EUR,F1Y8MXQRWNL,FP5L4WQKZNX,2025-05-16,,"- VALOR SOLICITADO: 200,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total","- CLIENTE: TRADING CORP
+- PAÍS IMPORTADOR: MÉXICO
+- PAÍS EXPORTADOR: ITALIA
+- VALOR TOTAL DE COMPRA: 200,000
+- MONEDA DE PAGO SOLICITADO: USD
+- TÉRMINOS DE PAGO: LIBERACIÓN COMPLETA
+*******DATOS BANCARIOS*******
+- BENEFICIARIO: BANCO INTERNACIONAL
+- BANCO: 1234567
+- DIRECCIÓN: MILAN 12345
+- NÚMERO DE CUENTA: 987654321
+- SWIFT: BCITITMM
+*************************
+- ICOTERM COMPRA: FOB - MILAN
+- ICOTERM VENTA: DAP - ZONA FRANCA
+- OBSERVACIONES: Liberación completa de mercancía mediante liberaciones parciales
+-----------------------
+- VALOR SOLICITADO: 200,000
+- NÚMERO DE GIRO: Liberación completa
+- PORCENTAJE DE GIRO: 100% del total
+---------------
+- Liberación 1
+- Capital: 80,000 USD
+- Fecha: 2025-04-15
+- Liberación 2
+- Capital: 70,000 USD
+- Fecha: 2025-07-20
+- Liberación 3
+- Capital: 50,000 USD
+- Fecha: 2025-10-05
+---------
+NPS
+- Inconvenientes: No
+- Descripción inconvenientes: Proceso completado exitosamente, mercancía liberada en su totalidad mediante 3 liberaciones parciales
+- Calificación (1 mala - 5 buena): 5",,diego.santos@finkargo.com,MNBV374682PLO
+<#CW9R6K3TQXM|>,,,,Aprobación de Cotización,Listo,F2M7NQKRXTL,En progreso,F8Y4WLQKZNR,,FK6P9NQRXTM,,F3T5YXQRMNK,CW9R6K3TQXM,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example15/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Financiamiento,F7Q1KNRXTMP,,Listo - Proforma,F9L4WKQPZNR,En Progreso ( Listo Pago FK),FY2M8NQRXTK,155000 USD,FJ5T6WXQRNL,F4P3LQKZNXR,2025-03-10,,- VALOR SOLICITADO: 155000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 65% del total,- CLIENTE: MIDDLE EAST TRADE\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: EMIRATOS ÁRABES UNIDOS\n- VALOR TOTAL DE COMPRA: 155000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 35% ADVANCE / 65% AGAINST BL\n- ICOTERM COMPRA: FOB - DUBAI\n- ICOTERM VENTA: DAP - ZONA FRANCA,,ana.lopez@finkargo.com,LKJH295738QWE
+<#CX2T7H8MQRL|>,,,,Docu Legal Gnal / Cuota Op / Nego Int,Listo,F6K9PQNRXTM,Aprobada,F1W3LQKZXNR,,FY8M5NQRXTK,Solicitado,F4T2YXQRMNL,CX2T7H8MQRL,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example16/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 2 / Financiamiento,F7Q6KNRXTMP,,En progreso,F3W9LQKPZNR,Solicitado a Tesorería,FJ1M4NQRXTK,190000 EUR,F8T5YXQRWNL,FP2L7WQKZNX,2025-04-14,,- VALOR SOLICITADO: 190000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 55% del total,- CLIENTE: SCANDINAVIAN IMPORTS\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: NORUEGA\n- VALOR TOTAL DE COMPRA: 190000\n- MONEDA DE PAGO: EUR\n- TÉRMINOS DE PAGO: 45% ADVANCE / 55% AGAINST BL\n- ICOTERM COMPRA: FOB - OSLO\n- ICOTERM VENTA: DAP - ZONA FRANCA,,miguel.torres@finkargo.com,QWER518743ZXC
+<#CY5L1J9NQXK|>,,,,Componente No 1 Plataforma - Giro 1 Proveedor Internacional,Listo,F9M4KQNRXTL,Comité de giro,F6W7PLQKZNR,Listo,FT3N8MQRXTK,Listo,F2Y5XQRMNLK,CY5L1J9NQXK,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example17/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Proveedor Mercancía,F8Q1KPNRXTM,Listo,Listo - Factura Final,F4W2LQKZXNR,En Progreso ( Listo Pago FK),FJ7M6NQRXTK,125000 USD,F3T9YXQRWNL,FP1L8WQKZNX,2025-08-26,Listo,- VALOR SOLICITADO: 125000\n- NÚMERO DE GIRO: 2° Giro a Proveedor\n- PORCENTAJE DE GIRO: 45% del total,- CLIENTE: OCEANIC TRADE\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: AUSTRALIA\n- VALOR TOTAL DE COMPRA: 125000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 55% ADVANCE / 45% AGAINST BL\n- ICOTERM COMPRA: FOB - SYDNEY\n- ICOTERM VENTA: DAP - ZONA FRANCA,Listo,sofia.martinez@finkargo.com,VCXZ627394PLM
+<#CZ8P3M6QRXT|>,,,,Componente No 2 Plataforma y Giro 2 Proveedor Internacional,Listo,F4K7NQRXTMP,Solicitado,F1W9PLQKZNR,Listo,FY5M2NQRXTK,Listo,F8T6YXQRMNL,CZ8P3M6QRXT,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example18/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Logístico,F7Q3KPNRXTM,Solicitado,Solicitado,F2W8LQKZXNR,Listo - Pago Confirmado,FJ4M1NQRXTK,165000 EUR,F6T9YXQRWNL,FP7L3WQKZNX,2025-07-02,Solicitado,- VALOR SOLICITADO: 165000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 60% del total,- CLIENTE: EASTERN EUROPEAN CO\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: POLONIA\n- VALOR TOTAL DE COMPRA: 165000\n- MONEDA DE PAGO: EUR\n- TÉRMINOS DE PAGO: 40% ADVANCE / 60% AGAINST BL\n- ICOTERM COMPRA: FOB - GDANSK\n- ICOTERM VENTA: DAP - ZONA FRANCA,Solicitado,carlos.rodriguez@finkargo.com,ASDF417285QWE
+<#CA4N9K2QTXR|>,,,,Componente Financiamiento Logístico,Listo,F8M5KQNRXTL,Comité de giro,F3W1PLQKZNR,,FY7N4MQRXTK,,F5T2YXQRMNL,CA4N9K2QTXR,"{""originalUrl"":""https://docs.google.com/spreadsheets/d/1example19/edit"",""attachment"":{},""displayAsUrl"":false}",Giro 2 / Proveedor Mercancía,F9Q6KPNRXTM,,Listo - Proforma,F4W5LQKZXNR,En Progreso ( Listo Pago FK),FJ8M3NQRXTK,135000 USD,F2T7YXQRWNL,FP4L9WQKZNX,2025-12-18,,- VALOR SOLICITADO: 135000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 75% del total,- CLIENTE: CANADIAN IMPORTS\n- PAÍS IMPORTADOR: MÉXICO\n- PAÍS EXPORTADOR: CANADÁ\n- VALOR TOTAL DE COMPRA: 135000\n- MONEDA DE PAGO: USD\n- TÉRMINOS DE PAGO: 25% ADVANCE / 75% AGAINST BL\n- ICOTERM COMPRA: FOB - VANCOUVER\n- ICOTERM VENTA: DAP - ZONA FRANCA,,lucia.herrera@finkargo.com,MNBV683952PLO

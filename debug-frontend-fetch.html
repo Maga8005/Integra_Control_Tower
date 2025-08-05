@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Frontend Fetch</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .success { border-color: #4CAF50; background-color: #f1f8e9; }
+        .error { border-color: #f44336; background-color: #ffebee; }
+        .warning { border-color: #ff9800; background-color: #fff3e0; }
+        pre { 
+            background: #f5f5f5; 
+            padding: 10px; 
+            border-radius: 4px; 
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button { 
+            background: #2196F3; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 4px; 
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #1976D2; }
+        .status { font-weight: bold; }
+        .timestamp { color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug Frontend Fetch - Integra Control Tower</h1>
+        <p>Esta página te ayuda a diagnosticar problemas de conexión entre el frontend y backend.</p>
+        
+        <div class="test-section">
+            <h3>Controles</h3>
+            <button onclick="runAllTests()">🧪 Ejecutar Todos los Tests</button>
+            <button onclick="clearResults()">🗑️ Limpiar Resultados</button>
+            <button onclick="testCORSPreflight()">✈️ Test CORS Preflight</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3001/api';
+        const ADMIN_KEY = 'admin-dev-key';
+
+        async function testEndpoint(url, description, options = {}) {
+            const startTime = Date.now();
+            const timestamp = new Date().toLocaleTimeString();
+            
+            const testResult = {
+                description,
+                url,
+                timestamp,
+                success: false,
+                status: null,
+                data: null,
+                error: null,
+                responseTime: 0
+            };
+
+            try {
+                console.log(`🔍 Testing: ${description}`);
+                console.log(`   URL: ${url}`);
+
+                const fetchOptions = {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-admin-key': ADMIN_KEY,
+                        ...options.headers
+                    },
+                    ...options
+                };
+
+                const response = await fetch(url, fetchOptions);
+                testResult.status = response.status;
+                testResult.responseTime = Date.now() - startTime;
+
+                if (response.ok) {
+                    const data = await response.json();
+                    testResult.success = true;
+                    testResult.data = data;
+                    console.log(`   ✅ Success: ${response.status}`);
+                } else {
+                    const errorText = await response.text();
+                    testResult.error = `HTTP ${response.status}: ${errorText}`;
+                    console.log(`   ❌ HTTP Error: ${response.status}`);
+                }
+            } catch (error) {
+                testResult.responseTime = Date.now() - startTime;
+                testResult.error = error.message;
+                console.log(`   ❌ Fetch Error: ${error.message}`);
+            }
+
+            return testResult;
+        }
+
+        async function runAllTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<h3>🔄 Ejecutando tests...</h3>';
+
+            const tests = [
+                {
+                    url: 'http://localhost:3001/health',
+                    description: '1. Backend Health Check',
+                    critical: true
+                },
+                {
+                    url: 'http://localhost:3001/api',
+                    description: '2. API Info Endpoint',
+                    critical: false
+                },
+                {
+                    url: `${API_BASE_URL}/admin/csv-fields`,
+                    description: '3. CSV Fields Admin Endpoint',
+                    critical: true
+                },
+                {
+                    url: `${API_BASE_URL}/admin/csv-data`,
+                    description: '4. CSV Data Admin Endpoint',
+                    critical: true
+                },
+                {
+                    url: `${API_BASE_URL}/operations`,
+                    description: '5. Operations Endpoint',
+                    critical: true
+                },
+                {
+                    url: `${API_BASE_URL}/operations/stats`,
+                    description: '6. Operations Stats',
+                    critical: false
+                }
+            ];
+
+            let html = '<h3>📊 Resultados de Tests</h3>';
+            let allCriticalPassed = true;
+
+            for (const test of tests) {
+                const result = await testEndpoint(test.url, test.description);
+                
+                const cssClass = result.success ? 'success' : (test.critical ? 'error' : 'warning');
+                const icon = result.success ? '✅' : '❌';
+                
+                if (test.critical && !result.success) {
+                    allCriticalPassed = false;
+                }
+
+                html += `
+                    <div class="test-section ${cssClass}">
+                        <h4>${icon} ${result.description}</h4>
+                        <p><strong>URL:</strong> ${result.url}</p>
+                        <p><strong>Status:</strong> <span class="status">${result.status || 'N/A'}</span></p>
+                        <p><strong>Tiempo:</strong> ${result.responseTime}ms</p>
+                        <p class="timestamp">Ejecutado: ${result.timestamp}</p>
+                        
+                        ${result.success ? `
+                            <details>
+                                <summary>📄 Respuesta (${Object.keys(result.data).length} campos)</summary>
+                                <pre>${JSON.stringify(result.data, null, 2)}</pre>
+                            </details>
+                        ` : `
+                            <p><strong>❌ Error:</strong> ${result.error}</p>
+                        `}
+                    </div>
+                `;
+            }
+
+            // Resumen final
+            html += `
+                <div class="test-section ${allCriticalPassed ? 'success' : 'error'}">
+                    <h3>${allCriticalPassed ? '🎉' : '🚨'} Resumen</h3>
+                    <p><strong>Estado general:</strong> ${allCriticalPassed ? 'TODOS LOS TESTS CRÍTICOS PASARON' : 'ALGUNOS TESTS CRÍTICOS FALLARON'}</p>
+                    
+                    ${allCriticalPassed ? `
+                        <p>✅ El backend está funcionando correctamente</p>
+                        <p>✅ Los endpoints están respondiendo</p>
+                        <p>✅ Los datos CSV están disponibles</p>
+                        <p><strong>💡 Si el frontend sigue fallando, el problema podría estar en:</strong></p>
+                        <ul>
+                            <li>CORS configuration</li>
+                            <li>Frontend fetch configuration</li>
+                            <li>Network/firewall issues</li>
+                        </ul>
+                    ` : `
+                        <p>❌ Hay problemas con el backend</p>
+                        <p><strong>🔧 Pasos para solucionar:</strong></p>
+                        <ul>
+                            <li>Verifica que el backend esté corriendo: <code>cd backend && npm run dev</code></li>
+                            <li>Verifica que el archivo CSV esté presente</li>
+                            <li>Revisa la consola del backend para errores</li>
+                        </ul>
+                    `}
+                </div>
+            `;
+
+            resultsDiv.innerHTML = html;
+        }
+
+        async function testCORSPreflight() {
+            const resultsDiv = document.getElementById('results');
+            
+            try {
+                // Test CORS preflight
+                const response = await fetch(`${API_BASE_URL}/admin/csv-fields`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://localhost:5173',
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'x-admin-key'
+                    }
+                });
+
+                resultsDiv.innerHTML = `
+                    <div class="test-section ${response.ok ? 'success' : 'error'}">
+                        <h3>✈️ CORS Preflight Test</h3>
+                        <p><strong>Status:</strong> ${response.status}</p>
+                        <p><strong>Headers:</strong></p>
+                        <pre>${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-section error">
+                        <h3>❌ CORS Preflight Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 1000);
+        });
+    </script>
+</body>
+</html>

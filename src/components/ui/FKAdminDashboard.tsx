@@ -1,0 +1,649 @@
+/**
+ * Dashboard específico para administradores
+ * Muestra todas las operaciones del sistema
+ */
+
+import { useNavigate } from 'react-router-dom';
+import { 
+  Clock, 
+  TrendingUp, 
+  AlertCircle, 
+  CheckCircle, 
+  RefreshCw,
+  Users,
+  DollarSign,
+  BarChart3,
+  ArrowRight,
+  Shield,
+  Search,
+  Filter,
+  X,
+  Upload,
+  FileText,
+  CheckCircle2
+} from 'lucide-react';
+import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
+import { cn } from '../../utils/cn';
+import { useState, useMemo } from 'react';
+
+// Timeline phases mapping
+const TIMELINE_PHASES = [
+  'Solicitud Enviada',
+  'Documentos de Operación y Pago Cuota Operacional', 
+  'Procesamiento de Pago',
+  'Envío y Logística',
+  'Operación Completada'
+];
+
+// Helper function to get current phase instead of next pending phase
+function getCurrentTimelinePhase(operation: any): string {
+  // If operation has timeline data, use it
+  if (operation.timeline && operation.timeline.length > 0) {
+    // Find the current phase (last completed or first in progress)
+    let currentPhaseIndex = -1;
+    
+    // First, look for phases in progress
+    for (let i = 0; i < operation.timeline.length; i++) {
+      const event = operation.timeline[i];
+      if (event.estado === 'en_proceso') {
+        return event.fase;
+      }
+    }
+    
+    // If no phase is in progress, find the last completed phase
+    for (let i = 0; i < operation.timeline.length; i++) {
+      const event = operation.timeline[i];
+      if (event.estado === 'completado') {
+        currentPhaseIndex = i;
+      }
+    }
+    
+    // If we found completed phases, return the last one
+    if (currentPhaseIndex >= 0) {
+      const currentPhase = operation.timeline[currentPhaseIndex];
+      return currentPhase.fase;
+    }
+    
+    // If no phases are completed or in progress, return the first phase
+    if (operation.timeline.length > 0) {
+      return operation.timeline[0].fase;
+    }
+  }
+  
+  // Fallback: estimate current phase based on progress percentage
+  const progress = operation.progress || 0;
+  if (progress === 100) return 'Operación Completada';
+  if (progress >= 80) return TIMELINE_PHASES[4]; // Completion phase
+  if (progress >= 60) return TIMELINE_PHASES[3]; // Shipping
+  if (progress >= 40) return TIMELINE_PHASES[2]; // Payment
+  if (progress >= 20) return TIMELINE_PHASES[1]; // Documents
+  return TIMELINE_PHASES[0]; // Initial phase
+}
+
+// Get phase color and icon
+function getPhaseConfig(phaseName: string) {
+  switch (phaseName) {
+    case 'Solicitud Enviada':
+      return { color: 'bg-blue-100 text-blue-600 border-blue-200', icon: Clock };
+    case 'Documentos de Operación y Pago Cuota Operacional':
+      return { color: 'bg-orange-100 text-orange-600 border-orange-200', icon: AlertCircle };
+    case 'Procesamiento de Pago':
+      return { color: 'bg-purple-100 text-purple-600 border-purple-200', icon: DollarSign };
+    case 'Envío y Logística':
+      return { color: 'bg-indigo-100 text-indigo-600 border-indigo-200', icon: TrendingUp };
+    case 'Operación Completada':
+      return { color: 'bg-success-100 text-success-600 border-success-200', icon: CheckCircle };
+    default:
+      return { color: 'bg-gray-100 text-gray-600 border-gray-200', icon: Clock };
+  }
+}
+
+export default function FKAdminDashboard() {
+  const navigate = useNavigate();
+  const { operations, isLoading, error, metadata, refetch } = useAdminDashboardData();
+  
+  // Local state for filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'value' | 'progress' | 'updated'>('updated');
+  
+  // CSV Upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState<{
+    success: boolean;
+    message: string;
+    summary?: any;
+  } | null>(null);
+
+  // Filter and sort operations
+  const filteredAndSortedOperations = useMemo(() => {
+    let filtered = [...operations];
+    
+    // Search filter
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(op => 
+        op.clientName.toLowerCase().includes(term) ||
+        op.providerName.toLowerCase().includes(term) ||
+        op.clientNit.toLowerCase().includes(term) ||
+        op.assignedPerson.toLowerCase().includes(term)
+      );
+    }
+    
+    // Phase filter - now filtering by current phases instead of generic status
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(op => {
+        const currentPhase = getCurrentTimelinePhase(op);
+        return currentPhase === statusFilter;
+      });
+    }
+    
+    // Sort operations
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.clientName.localeCompare(b.clientName);
+        case 'value':
+          return (b.totalValueNumeric || 0) - (a.totalValueNumeric || 0);
+        case 'progress':
+          return (b.progress || 0) - (a.progress || 0);
+        case 'updated':
+        default:
+          return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
+      }
+    });
+    
+    return filtered;
+  }, [operations, searchTerm, statusFilter, sortBy]);
+
+  // Calculate admin statistics
+  const stats = {
+    totalOperations: operations.length,
+    completedOperations: operations.filter(op => op.status === 'completed').length,
+    inProgressOperations: operations.filter(op => op.status === 'in-progress').length,
+    totalValue: operations.reduce((sum, op) => sum + (op.totalValueNumeric || 0), 0),
+    uniqueClients: new Set(operations.map(op => op.clientNit)).size
+  };
+  
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setSortBy('updated');
+  };
+
+  const handleOperationClick = (operationId: string) => {
+    navigate(`/admin/operation/${operationId}`);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'text-green-600 bg-green-100';
+      case 'in-progress': return 'text-blue-600 bg-blue-100';
+      case 'on-hold': return 'text-orange-600 bg-orange-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <CheckCircle className="h-4 w-4" />;
+      case 'in-progress': return <Clock className="h-4 w-4" />;
+      case 'on-hold': return <AlertCircle className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
+    }
+  };
+
+  // CSV Upload handler
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setUploadResult({
+        success: false,
+        message: 'Por favor selecciona un archivo CSV válido'
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadResult({
+        success: false,
+        message: 'El archivo es demasiado grande. Máximo 5MB permitidos'
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('csvFile', file);
+
+      const response = await fetch('http://localhost:3001/api/admin/upload-csv', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'x-admin-key': 'admin-dev-key' // Para desarrollo
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setUploadResult({
+          success: true,
+          message: result.message,
+          summary: result.data?.summary
+        });
+        
+        // Refrescar datos después de upload exitoso
+        setTimeout(() => {
+          refetch();
+        }, 1000);
+      } else {
+        setUploadResult({
+          success: false,
+          message: result.message || 'Error subiendo el archivo CSV',
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading CSV:', error);
+      setUploadResult({
+        success: false,
+        message: 'Error de conexión al subir el archivo'
+      });
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (event.target) {
+        event.target.value = '';
+      }
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-error-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Error al cargar datos</h3>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={refetch}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Admin Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+              <BarChart3 className="h-6 w-6 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Total Operaciones</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalOperations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Completadas</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.completedOperations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Clock className="h-6 w-6 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">En Progreso</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.inProgressOperations}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Users className="h-6 w-6 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Clientes Únicos</p>
+              <p className="text-2xl font-bold text-gray-900">{stats.uniqueClients}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Operations Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Shield className="h-5 w-5 text-primary-600" />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Todas las Operaciones 
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {filteredAndSortedOperations.length} de {operations.length} operaciones
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Upload CSV Button */}
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleCSVUpload}
+                  disabled={isUploading}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                  id="csv-upload-input"
+                />
+                <label
+                  htmlFor="csv-upload-input"
+                  className={cn(
+                    "inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors cursor-pointer",
+                    isUploading
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : "bg-green-50 text-green-700 hover:bg-green-100"
+                  )}
+                >
+                  <Upload className={cn("h-4 w-4", isUploading && "animate-pulse")} />
+                  {isUploading ? 'Subiendo...' : 'Subir CSV'}
+                </label>
+              </div>
+
+              {/* Refresh Button */}
+              <button
+                onClick={refetch}
+                disabled={isLoading}
+                className={cn(
+                  "inline-flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors",
+                  isLoading
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-primary-50 text-primary-700 hover:bg-primary-100"
+                )}
+              >
+                <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                {isLoading ? 'Actualizando...' : 'Actualizar'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por cliente, proveedor, NIT o persona asignada..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+              />
+            </div>
+            
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="all">Todas las fases</option>
+                {TIMELINE_PHASES.map((phase) => (
+                  <option key={phase} value={phase}>
+                    {phase.length > 25 ? phase.substring(0, 25) + '...' : phase}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Sort By */}
+            <div className="flex items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              >
+                <option value="updated">Recién actualizadas</option>
+                <option value="name">Nombre cliente</option>
+                <option value="value">Valor (mayor a menor)</option>
+                <option value="progress">Progreso (mayor a menor)</option>
+              </select>
+            </div>
+            
+            {/* Clear Filters */}
+            {(searchTerm || statusFilter !== 'all' || sortBy !== 'updated') && (
+              <button
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 px-3 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                title="Limpiar filtros"
+              >
+                <X className="h-4 w-4" />
+                Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Upload Result Notification */}
+        {uploadResult && (
+          <div className={cn(
+            "mx-6 mb-4 p-4 rounded-lg border",
+            uploadResult.success
+              ? "bg-green-50 border-green-200 text-green-800"
+              : "bg-red-50 border-red-200 text-red-800"
+          )}>
+            <div className="flex items-start gap-3">
+              {uploadResult.success ? (
+                <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+              ) : (
+                <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <p className="font-medium">{uploadResult.message}</p>
+                {uploadResult.success && uploadResult.summary && (
+                  <div className="mt-2 text-sm space-y-1">
+                    <p>• Filas procesadas: {uploadResult.summary.rowsProcessed}</p>
+                    <p>• Operaciones anteriores: {uploadResult.summary.previousRows}</p>
+                    <p>• Operaciones válidas: {uploadResult.summary.validOperations}</p>
+                    {uploadResult.summary.errorCount > 0 && (
+                      <p>• Errores encontrados: {uploadResult.summary.errorCount}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => setUploadResult(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando operaciones...</p>
+          </div>
+        ) : filteredAndSortedOperations.length === 0 ? (
+          <div className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {operations.length === 0 ? 'No hay operaciones' : 'No se encontraron operaciones'}
+            </h3>
+            <p className="text-gray-600">
+              {operations.length === 0 
+                ? 'No se encontraron operaciones en el sistema.'
+                : 'Intenta ajustar los filtros de búsqueda.'}
+            </p>
+            {(searchTerm || statusFilter !== 'all') && (
+              <button
+                onClick={clearFilters}
+                className="mt-3 inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm"
+              >
+                <X className="h-4 w-4" />
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                    Cliente / NIT
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Proveedor
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                    Valores
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                    Fase Actual
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                    Progreso
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredAndSortedOperations.map((operation) => (
+                  <tr key={operation.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{operation.clientName}</p>
+                        <p className="text-sm text-gray-600">NIT: {operation.clientNit}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <p className="text-gray-900 text-sm truncate" title={operation.providerName}>
+                        {operation.providerName}
+                      </p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="space-y-1">
+                        {/* Valor Operación - PRIMERO Y MÁS PROMINENTE */}
+                        {operation.operationValue && (
+                          <div>
+                            <p className="font-bold text-primary-600 text-base whitespace-nowrap">
+                              {operation.operationValue}
+                            </p>
+                            <p className="text-xs text-gray-500">Valor Total</p>
+                          </div>
+                        )}
+                        {/* Valor Compra - Más pequeño */}
+                        <div>
+                          <p className="text-sm text-gray-700 whitespace-nowrap">{operation.totalValue}</p>
+                          <p className="text-xs text-gray-400">Valor compra</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const currentPhase = getCurrentTimelinePhase(operation);
+                        const phaseConfig = getPhaseConfig(currentPhase);
+                        const PhaseIcon = phaseConfig.icon;
+                        
+                        // Show different styling for completed operations
+                        const isCompleted = currentPhase === 'Operación Completada';
+                        
+                        return (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
+                            phaseConfig.color,
+                            isCompleted && "ring-1 ring-success-300"
+                          )}>
+                            <PhaseIcon className="h-3 w-3" />
+                            <span className="max-w-[120px] truncate" title={currentPhase}>
+                              {isCompleted 
+                                ? 'Completada' 
+                                : currentPhase.length > 15 
+                                  ? currentPhase.substring(0, 15) + '...' 
+                                  : currentPhase
+                              }
+                            </span>
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${operation.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 min-w-[3rem]">
+                          {operation.progress}%
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => handleOperationClick(operation.id)}
+                        className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      >
+                        Ver detalles
+                        <ArrowRight className="h-3 w-3" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Metadata Information */}
+      {metadata && (
+        <div className="bg-gray-50 rounded-lg p-4">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <span>Última actualización: {new Date(metadata.lastUpdated).toLocaleString()}</span>
+            <span>
+              Operaciones válidas: {metadata.processingStats?.validOperations || 0} | 
+              Errores: {metadata.processingStats?.errorCount || 0}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,406 @@
+/**
+ * Hook personalizado para obtener datos del dashboard desde el backend
+ * Integra Control Tower MVP
+ */
+
+import { useState, useEffect } from 'react';
+import { useAuth } from './useAuth';
+
+// Timeline interfaces
+export interface TimelineState {
+  id: number;
+  name: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'blocked';
+  progress: number;
+  description: string;
+  completedAt?: string;
+  notes?: string;
+}
+
+export interface Timeline {
+  states: TimelineState[];
+  currentState: number;
+  overallProgress: number;
+}
+
+// Interface para los datos que llegan del backend
+// Interface para liberaciones ejecutadas
+export interface LiberacionEjecutada {
+  numero: number;
+  capital: number;
+  fecha: string;
+  estado: 'completado';
+}
+
+export interface BackendOperationCard {
+  id: string;
+  clientName: string;
+  clientNit: string;
+  providerName: string;      // NUEVO: Nombre del proveedor internacional
+  totalValue: string;        // Formato: "$75,000 USD" - Valor compra mercancía
+  totalValueNumeric: number; // NUEVO: Valor numérico para cálculos - Valor compra mercancía
+  operationValue?: string;   // NUEVO: Valor total de la operación (formato: "$75,000 USD")
+  operationValueNumeric?: number; // NUEVO: Valor operación numérico para cálculos
+  route: string;
+  assignedPerson: string;
+  progress: number;
+  status: 'draft' | 'in-progress' | 'completed' | 'on-hold';
+  currentPhaseName?: string; // NUEVO: Nombre de la fase actual del timeline
+  timeline?: Timeline;       // NUEVO: Timeline de 5 estados
+  incotermCompra?: string;   // NUEVO: Incoterm de compra (ej: FOB, DAP)
+  incotermVenta?: string;    // NUEVO: Incoterm de venta (ej: CIF, DDP)
+  liberaciones?: LiberacionEjecutada[]; // NUEVO: Liberaciones ejecutadas
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DashboardResponse {
+  success: boolean;
+  data: BackendOperationCard[];
+  metadata: {
+    totalOperations: number;
+    lastUpdated: string;
+    processingStats?: {
+      validOperations: number;
+      errorCount: number;
+      warningCount: number;
+    };
+  };
+  message?: string;
+  errors?: string[];
+}
+
+export interface UseDashboardDataReturn {
+  operations: BackendOperationCard[];
+  isLoading: boolean;
+  error: string | null;
+  metadata: DashboardResponse['metadata'] | null;
+  refetch: () => void;
+}
+
+const BACKEND_URL = 'http://localhost:3001';
+
+// Función para mapear estructura del backend a frontend
+function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
+  return backendData.map((op: any) => {
+    // Parsear Incoterms desde el campo "incoterms" del backend
+    let incotermCompra: string | undefined;
+    let incotermVenta: string | undefined;
+    
+    if (op.incoterms && op.incoterms !== ' → ' && op.incoterms.trim()) {
+      // Si contiene " / ", dividir en compra y venta
+      if (op.incoterms.includes(' / ')) {
+        const [compra, venta] = op.incoterms.split(' / ');
+        incotermCompra = compra?.trim() || undefined;
+        incotermVenta = venta?.trim() || undefined;
+      } else {
+        // Si no contiene " / ", usar como compra únicamente
+        incotermCompra = op.incoterms.trim();
+      }
+    }
+    
+    return {
+      id: op.id,
+      clientName: op.clienteCompleto,
+      clientNit: op.clienteNit || op.clienteNIT || 'Sin NIT',
+      providerName: op.proveedorBeneficiario || 'Proveedor no especificado',
+      totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
+      totalValueNumeric: op.valorTotal || 0,
+      operationValue: `$${op.valorOperacion?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
+      operationValueNumeric: op.valorOperacion || 0,
+      route: op.rutaComercial || 'Ruta no especificada',
+      assignedPerson: op.personaAsignada || 'No asignado',
+      progress: op.progresoGeneral || 0,
+      status: mapBackendStatus(op.estados),
+      currentPhaseName: getCurrentPhaseName(op.timeline),
+      timeline: mapTimelineData(op.timeline), // NUEVO: Mapear timeline
+      incotermCompra, // NUEVO: Incoterm de compra extraído
+      incotermVenta,  // NUEVO: Incoterm de venta extraído
+      liberaciones: mapLiberaciones(op.liberaciones), // NUEVO: Mapear liberaciones ejecutadas
+      createdAt: op.fechaCreacion,
+      updatedAt: op.ultimaActualizacion
+    } as BackendOperationCard;
+  });
+}
+
+// Función helper para mapear status del backend
+function mapBackendStatus(estados: any): 'draft' | 'in-progress' | 'completed' | 'on-hold' {
+  if (!estados) return 'draft';
+  
+  const completedCount = Object.values(estados).filter(estado => estado === 'completado').length;
+  const totalStates = Object.values(estados).length;
+  
+  if (completedCount === totalStates) return 'completed';
+  if (completedCount > 0) return 'in-progress';
+  return 'draft';
+}
+
+// Función helper para obtener nombre de fase actual
+function getCurrentPhaseName(timeline: any[]): string | undefined {
+  if (!timeline || !Array.isArray(timeline)) return undefined;
+  
+  const currentPhase = timeline.find(phase => phase.estado === 'en_proceso');
+  return currentPhase?.fase;
+}
+
+// Función helper para mapear timeline del backend al frontend
+function mapTimelineData(backendTimeline: any[]): Timeline | undefined {
+  if (!backendTimeline || !Array.isArray(backendTimeline)) return undefined;
+  
+  const states: TimelineState[] = backendTimeline.map((phase: any, index: number) => ({
+    id: index + 1,
+    name: phase.fase || `Fase ${index + 1}`,
+    status: mapTimelineStatus(phase.estado),
+    progress: phase.progreso || 0,
+    description: phase.descripcion || '',
+    completedAt: phase.fecha,
+    notes: phase.notas
+  }));
+  
+  // Encontrar el estado actual (el primer "in-progress" o el último "completed")
+  let currentState = 1;
+  const inProgressState = states.find(state => state.status === 'in-progress');
+  if (inProgressState) {
+    currentState = inProgressState.id;
+  } else {
+    const completedStates = states.filter(state => state.status === 'completed');
+    if (completedStates.length > 0) {
+      currentState = Math.min(completedStates[completedStates.length - 1].id + 1, states.length);
+    }
+  }
+  
+  // Calcular progreso general
+  const overallProgress = Math.round(
+    states.reduce((sum, state) => sum + state.progress, 0) / states.length
+  );
+  
+  return {
+    states,
+    currentState,
+    overallProgress
+  };
+}
+
+// Función helper para mapear estado de timeline
+function mapTimelineStatus(backendStatus: string): 'pending' | 'in-progress' | 'completed' | 'blocked' {
+  switch (backendStatus?.toLowerCase()) {
+    case 'completado':
+    case 'completed':
+      return 'completed';
+    case 'en_proceso':
+    case 'en proceso':
+    case 'in_progress':
+      return 'in-progress';
+    case 'bloqueado':
+    case 'blocked':
+      return 'blocked';
+    default:
+      return 'pending';
+  }
+}
+
+// Función helper para mapear liberaciones del backend
+function mapLiberaciones(backendLiberaciones: any[]): LiberacionEjecutada[] | undefined {
+  if (!backendLiberaciones || !Array.isArray(backendLiberaciones) || backendLiberaciones.length === 0) {
+    return undefined;
+  }
+  
+  // Solo mapear liberaciones que están realmente ejecutadas
+  return backendLiberaciones
+    .filter(lib => lib.estado === 'COMPLETADO' || lib.estado === 'completado')
+    .map(lib => ({
+      numero: lib.numero || 1,
+      capital: lib.capital || 0,
+      fecha: lib.fecha || '',
+      estado: 'completado' as const
+    }))
+    .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime()); // Más reciente primero
+}
+
+export function useDashboardData(): UseDashboardDataReturn {
+  const [operations, setOperations] = useState<BackendOperationCard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<DashboardResponse['metadata'] | null>(null);
+  
+  // Get auth context to check for client operations
+  const { user, clientOperations, authToken } = useAuth();
+
+  const fetchDashboardData = async () => {
+    try {
+      console.log('🔄 Iniciando fetch de datos del dashboard...');
+      setIsLoading(true);
+      setError(null);
+
+      const response = await fetch(`${BACKEND_URL}/api/operations/dashboard`);
+      
+      console.log('🌐 Respuesta HTTP:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Error HTTP:', response.status, errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+      }
+
+      const data: DashboardResponse = await response.json();
+      
+      console.log('📄 Datos recibidos:', {
+        success: data.success,
+        operaciones: data.data?.length || 0,
+        errores: data.errors?.length || 0,
+        metadata: data.metadata
+      });
+
+      if (!data.success) {
+        console.error('❌ Backend reportó error:', data.message, data.errors);
+        throw new Error(data.message || 'Error obteniendo datos del dashboard');
+      }
+
+      if (!data.data || data.data.length === 0) {
+        console.warn('⚠️ No se recibieron operaciones del backend');
+        console.log('Metadata:', data.metadata);
+      }
+
+      console.log('✅ Datos del dashboard procesados correctamente:', {
+        operaciones: data.data.length,
+        validOperations: data.metadata.processingStats?.validOperations,
+        errorCount: data.metadata.processingStats?.errorCount
+      });
+
+      // TEMPORAL: Usar datos directos del backend sin mapeo
+      // const mappedOperations = mapBackendToFrontend(data.data || []);
+      // setOperations(mappedOperations);
+      
+      // Mapeo mínimo solo para Incoterms
+      const operationsWithIncoterms = (data.data || []).map((op: any) => {
+        // Extraer Incoterms del campo combinado
+        let incotermCompra: string | undefined;
+        let incotermVenta: string | undefined;
+        
+        if (op.incoterms && op.incoterms !== ' → ' && op.incoterms.trim()) {
+          if (op.incoterms.includes(' / ')) {
+            const [compra, venta] = op.incoterms.split(' / ');
+            incotermCompra = compra?.trim() || undefined;
+            incotermVenta = venta?.trim() || undefined;
+          } else {
+            incotermCompra = op.incoterms.trim();
+          }
+        }
+        
+        // Mantener toda la estructura original, solo agregar Incoterms
+        return {
+          ...op,
+          incotermCompra,
+          incotermVenta
+        };
+      });
+      
+      setOperations(operationsWithIncoterms);
+      setMetadata(data.metadata);
+
+    } catch (err) {
+      console.error('❌ Error completo fetching dashboard data:', {
+        error: err,
+        message: err instanceof Error ? err.message : 'Error desconocido',
+        stack: err instanceof Error ? err.stack : undefined
+      });
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setOperations([]);
+      setMetadata(null);
+    } finally {
+      setIsLoading(false);
+      console.log('🏁 Fetch completado');
+    }
+  };
+
+  // Logic to determine data source
+  useEffect(() => {
+    console.log('🔍 useDashboardData useEffect - Estado:', {
+      user: user?.name,
+      userRole: user?.role,
+      userNit: user?.nit,
+      hasClientOperations: !!clientOperations,
+      clientOperationsCount: clientOperations?.length || 0,
+      hasAuthToken: !!authToken
+    });
+
+    // Administrators always fetch ALL operations from backend
+    if (user?.role === 'administrator') {
+      console.log('👑 Usuario administrador - Fetcheando TODAS las operaciones del backend');
+      fetchDashboardData();
+      
+      // Revalidar cada 30 segundos para administradores para detectar cambios en CSV
+      const interval = setInterval(() => {
+        console.log('🔄 Revalidación automática del dashboard (admin)');
+        fetchDashboardData();
+      }, 30000); // 30 segundos
+      
+      return () => clearInterval(interval);
+    }
+
+    // If user is authenticated via NIT and has client operations, use those
+    if (user?.nit && clientOperations && authToken && user?.role !== 'administrator') {
+      console.log('✅ Usando operaciones del cliente autenticado por NIT:', clientOperations.length);
+      setIsLoading(false);
+      setError(null);
+      setOperations(clientOperations);
+      
+      // Create metadata for client operations
+      setMetadata({
+        totalOperations: clientOperations.length,
+        lastUpdated: new Date().toISOString(),
+        processingStats: {
+          validOperations: clientOperations.length,
+          errorCount: 0,
+          warningCount: 0
+        }
+      });
+    } else if (user?.role !== 'administrator') {
+      // For non-NIT users or demo users, fetch all operations from backend
+      console.log('🌐 Fetching todas las operaciones del backend para usuario:', user?.email || 'no autenticado');
+      fetchDashboardData();
+      
+      // Revalidar cada 30 segundos para usuarios que usan backend
+      const interval = setInterval(() => {
+        console.log('🔄 Revalidación automática del dashboard (usuario backend)');
+        fetchDashboardData();
+      }, 30000); // 30 segundos
+      
+      return () => clearInterval(interval);
+    }
+  }, [user?.role, user?.nit, clientOperations, authToken]);
+
+  const refetch = () => {
+    console.log('🔄 REFETCH llamado por usuario:', {
+      userRole: user?.role,
+      userNit: user?.nit,
+      hasClientOperations: !!clientOperations,
+      clientOperationsCount: clientOperations?.length || 0
+    });
+
+    // Administrators always refetch from backend
+    if (user?.role === 'administrator') {
+      console.log('👑 Refrescando datos de administrador - Fetcheando del backend');
+      fetchDashboardData();
+      return;
+    }
+
+    // If using client operations, just refresh the current data
+    if (user?.nit && clientOperations && authToken && user?.role !== 'administrator') {
+      console.log('🔄 Refrescando operaciones del cliente autenticado');
+      setOperations([...clientOperations]); // Force re-render
+    } else {
+      // Otherwise fetch from backend
+      console.log('🌐 Refrescando desde backend para usuario no-NIT');
+      fetchDashboardData();
+    }
+  };
+
+  return {
+    operations,
+    isLoading,
+    error,
+    metadata,
+    refetch
+  };
+}
