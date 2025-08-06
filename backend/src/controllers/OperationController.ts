@@ -6,6 +6,8 @@
 import { Request, Response } from 'express';
 import { CSVProcessor } from '../services/CSVProcessor';
 import { ApiResponse, OperationDetail, DashboardResponse } from '../types/Operation';
+import fs from 'fs';
+import path from 'path';
 // Removed: import { mapMultipleCSVToCards, validateCSVRow } from '../utils/csvMappers';
 
 // Cache simple en memoria para las operaciones
@@ -17,25 +19,54 @@ export class OperationController {
   
   /**
    * GET /api/operations - Obtiene todas las operaciones del CSV
+   * ACTUALIZADO: Usa la misma data que el admin dashboard para consistencia
    */
   public static async getAllOperations(req: Request, res: Response): Promise<void> {
     try {
-      console.log('📊 GET /api/operations - Solicitando todas las operaciones');
+      console.log('📊 GET /api/operations - Solicitando todas las operaciones (MODO UNIFICADO)');
 
-      // Verificar cache
-      const operations = await OperationController.getOperationsFromCache();
+      // Usar la misma lógica que el admin dashboard para consistencia
+      const countries = ['CO', 'MX'] as const;
+      let allOperations: any[] = [];
       
-      if (!operations) {
+      for (const country of countries) {
+        try {
+          const countryFileName = `integra_${country.toLowerCase()}_data.csv`;
+          const countryFilePath = path.join(__dirname, `../../src/data/${countryFileName}`);
+          
+          // Check if country file exists
+          if (!fs.existsSync(countryFilePath)) {
+            console.log(`⚠️ Archivo de ${country} no encontrado: ${countryFileName}`);
+            continue;
+          }
+          
+          // Process country CSV using the same method as AdminController
+          const result = await CSVProcessor.processCSVFile(countryFilePath);
+          
+          if (result.success && result.data && result.data.length > 0) {
+            console.log(`📊 ${country}: ${result.data.length} operaciones cargadas`);
+            allOperations.push(...result.data);
+          } else {
+            console.log(`⚠️ Error procesando ${country}:`, result.errors);
+          }
+        } catch (error) {
+          console.error(`⚠️ Error cargando ${country}:`, error);
+        }
+      }
+      
+      console.log(`✅ Total operaciones cargadas: ${allOperations.length}`);
+      
+      if (allOperations.length === 0) {
         res.status(500).json({
           success: false,
-          message: 'Error procesando archivo CSV',
+          message: 'No se encontraron operaciones en ningún país',
           timestamp: new Date().toISOString()
         } as ApiResponse<null>);
         return;
       }
 
       // Aplicar filtros si se proporcionan
-      const filteredOperations = OperationController.applyFilters(operations, req.query);
+      const filteredOperations = OperationController.applyFilters(allOperations, req.query);
 
       // Aplicar paginación
       const page = parseInt(req.query.page as string) || 1;
@@ -74,46 +105,85 @@ export class OperationController {
 
   /**
    * GET /api/operations/:id - Obtiene una operación específica por ID
+   * Usa EXACTAMENTE la misma data que el admin dashboard para consistencia
    */
   public static async getOperationById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
       console.log(`🔍 GET /api/operations/${id} - Buscando operación específica`);
 
-      const operations = await OperationController.getOperationsFromCache();
+      // Import AdminController to use the same data processing
+      const { AdminController } = await import('./AdminController');
+      const countries = ['CO', 'MX'] as const;
+      let foundOperation = null;
+      let foundCountry = null;
       
-      if (!operations) {
-        res.status(500).json({
-          success: false,
-          message: 'Error procesando archivo CSV',
-          timestamp: new Date().toISOString()
-        } as ApiResponse<null>);
-        return;
+      // Use the EXACT same logic as AdminController.getCountryData
+      for (const country of countries) {
+        try {
+          const countryName = country === 'CO' ? 'Colombia' : 'México';
+          const countryFileName = `integra_${country.toLowerCase()}_data.csv`;
+          const countryFilePath = path.join(__dirname, `../../src/data/${countryFileName}`);
+          
+          console.log(`🌍 Buscando operación ${id} en ${countryName}...`);
+          
+          // Check if country file exists
+          if (!fs.existsSync(countryFilePath)) {
+            console.log(`⚠️ Archivo de ${countryName} no encontrado`);
+            continue;
+          }
+          
+          // Use the EXACT same processing as AdminController.getCountryData
+          const processingResult = await CSVProcessor.processCSVFile(countryFilePath);
+          
+          if (processingResult.success && processingResult.data && processingResult.data.length > 0) {
+            console.log(`📊 ${countryName}: ${processingResult.data.length} operaciones procesadas`);
+            
+            // Search for the operation
+            const operation = processingResult.data.find((op: any) => op.id === id);
+            
+            if (operation) {
+              foundOperation = operation;
+              foundCountry = country;
+              console.log(`✅ Operación ${id} encontrada en ${countryName}: ${operation.clienteCompleto}`);
+              break;
+            } else {
+              // Log available IDs for debugging (first 5)
+              const availableIds = processingResult.data.slice(0, 5).map((op: any) => op.id);
+              console.log(`❌ Operación ${id} NO encontrada en ${countryName}`);
+              console.log(`   IDs disponibles (primeros 5): ${availableIds.join(', ')}`);
+            }
+          } else {
+            console.log(`⚠️ Error procesando datos de ${countryName}:`, processingResult.errors);
+          }
+        } catch (error) {
+          console.error(`⚠️ Error procesando ${country}:`, error);
+          continue;
+        }
       }
-
-      const operation = operations.find(op => op.id === id);
-
-      if (!operation) {
-        console.log(`❌ Operación ${id} no encontrada`);
+      
+      if (!foundOperation) {
+        console.log(`❌ Operación ${id} NO ENCONTRADA en ningún país`);
         res.status(404).json({
           success: false,
           message: `Operación con ID ${id} no encontrada`,
+          errors: [`Operación ${id} no existe en los datos de Colombia ni México`],
           timestamp: new Date().toISOString()
         } as ApiResponse<null>);
         return;
       }
 
-      console.log(`✅ Operación encontrada: ${operation.clienteCompleto}`);
+      console.log(`✅ OPERACIÓN ENCONTRADA: ${foundOperation.clienteCompleto} (${foundCountry})`);
 
       res.status(200).json({
         success: true,
-        data: operation,
+        data: foundOperation,
         message: 'Operación obtenida exitosamente',
         timestamp: new Date().toISOString()
       } as ApiResponse<OperationDetail>);
 
     } catch (error) {
-      console.error('❌ Error en getOperationById:', error);
+      console.error('❌ ERROR CRÍTICO en getOperationById:', error);
       
       res.status(500).json({
         success: false,

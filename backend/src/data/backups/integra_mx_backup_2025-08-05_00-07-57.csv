@@ -1,0 +1,20 @@
+Nombre,Completado,"Persona asignada","Fecha de vencimiento",Proceso,"1. ESTADO Firma Cotización","1. Cotización PDF","5. ESTADO Compra Int","5. Doc Compra Int","3. ESTADO Doc Legal General","3. Doc Legales Integra","2. ESTADO factura Cuota Operacional","2. Factura Cuota Operacional","Item ID","6. Link de Cotización","6. GIRO #","7. Estrategia / Intereses","7. ESTADO Estrategia","9. ESTADO Proforma / Factura final","9. Proforma / Factura final","10. ESTADO Giro Proveedor","10. Swift de Pago Proveedor","14.Monto Pre/Liberación","5. Proforma Proveedor","4. Soporte Pago CO Cliente","14. Fecha de Liberación","4. ESTADO pago Cuota Operacional","10. Info por GIRO Proveedor","5. Info Gnal + Info Compra Int","6. ESTADO Link Cotización","15. Equipo Comercial","1. Docu. Cliente"
+<#C096N7S9QSJ|>,false,,,"3. Componente No 1 Plataforma - Giro 1 Proveedor Internacional",Listo,F096Q4QRS85,Aprobada,"F0989TUT96X,F098AH3HBJA",Listo,"F096S1UP4CV,F096S1UFH9T",Listo,F096SUTL6G2,C096N7S9QSJ,"{""originalUrl"":""https:\/\/docs.google.com\/spreadsheets\/d\/1DUhb1IBblURF03Cn6qFChRmDYT8slxvZ\/edit?gid=1824975719#gid=1824975719"",""attachment"":{},""displayAsUrl"":false}","Giro 1 / Financiamiento",F097ZQGUVNK,Listo,"Listo - Proforma",F0993A1F56C,,,,F0989TT8UFM,F09778NR6N6,,Listo,,"- CLIENTE: LITRA SA DE CV
+- PAÍS IMPORTADOR: MÉXICO
+- PAÍS EXPORTADOR: CHINA
+- VALOR TOTAL DE COMPRA: 69254.64
+- MONEDA DE PAGO SOLICITADO: USD NA
+- TÉRMINOS DE PAGO: 30% ADVANCE / 70% BEFORE SHIPMENT
+
+*******DATOS BANCARIOS*******
+
+- BENEFICIARIO: WUHAN TANAL INDUSTRIAL CO., LTD.
+- BANCO: INDUSTRIAL AND COMMERCIAL BANK OF CHINA WUHAN QING SHAN BRANCH
+- DIRECCIÓN: NO. 1538 HE PING ROAD, QING SHAN DISTRICT, WUHAN, CHINA 
+- NÚMERO DE CUENTA: 3202008109200105505
+- SWIFT: ICBKCNBJHUB
+*************************
+- ICOTERM COMPRA: FOB - EXW
+- ICOTERM VENTA: DAP - mexicali
+- OBSERVACIONES: Se requiere realizar previo en origen",Listo,juan.sioufi@finkargo.com,
+<#C095XN3RG3H|>,false,,,"1. Aprobación de Cotización",Solicitado,F09778KCHS5,,,Listo,F097GFLCBNC,,,C095XN3RG3H,,,,,,,,,,,,,,,,,luisa.gomez@finkargo.com,

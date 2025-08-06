@@ -8,6 +8,61 @@ import { BackendOperationCard, DashboardResponse } from './useDashboardData';
 
 const BACKEND_URL = 'http://localhost:3001';
 
+// Helper functions for data mapping
+function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return `$${amount.toLocaleString()} ${currency}`;
+}
+
+function mapOperationStatus(progress: number): 'draft' | 'in-progress' | 'completed' | 'on-hold' {
+  if (progress >= 100) return 'completed';
+  if (progress >= 20) return 'in-progress';
+  if (progress > 0) return 'draft';
+  return 'on-hold';
+}
+
+function getCurrentPhaseName(timeline: any[]): string {
+  if (!timeline || timeline.length === 0) return 'Sin información';
+  
+  // Find current phase (in progress or last completed)
+  const currentPhase = timeline.find(phase => phase.estado === 'en_proceso') || 
+                      timeline.filter(phase => phase.estado === 'completado').pop() ||
+                      timeline[0];
+  
+  return currentPhase?.fase || 'Sin fase';
+}
+
+function mapTimeline(backendTimeline: any[]): any {
+  if (!backendTimeline || backendTimeline.length === 0) {
+    return {
+      states: [],
+      currentState: 0,
+      overallProgress: 0
+    };
+  }
+
+  const states = backendTimeline.map((phase, index) => ({
+    id: index + 1,
+    name: phase.fase,
+    status: phase.estado === 'completado' ? 'completed' : 
+            phase.estado === 'en_proceso' ? 'in-progress' : 'pending',
+    progress: phase.progreso || 0,
+    description: phase.descripcion || phase.notas || '',
+    completedAt: phase.fecha,
+    notes: phase.notas
+  }));
+
+  const currentState = states.findIndex(state => state.status === 'in-progress') + 1 || 
+                      states.filter(state => state.status === 'completed').length;
+                      
+  const overallProgress = states.reduce((acc, state) => acc + state.progress, 0) / states.length;
+
+  return {
+    states,
+    currentState,
+    overallProgress
+  };
+}
+
 export interface UseAdminDashboardDataReturn {
   operations: BackendOperationCard[];
   isLoading: boolean;
@@ -16,7 +71,7 @@ export interface UseAdminDashboardDataReturn {
   refetch: () => void;
 }
 
-export function useAdminDashboardData(): UseAdminDashboardDataReturn {
+export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdminDashboardDataReturn {
   const [operations, setOperations] = useState<BackendOperationCard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,11 +79,12 @@ export function useAdminDashboardData(): UseAdminDashboardDataReturn {
 
   const fetchAdminDashboardData = useCallback(async () => {
     try {
-      console.log('👑 [ADMIN] Iniciando fetch de TODAS las operaciones...');
+      const countryName = countryCode === 'CO' ? 'Colombia' : 'México';
+      console.log(`👑 [ADMIN] Iniciando fetch de operaciones de ${countryName}...`);
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`${BACKEND_URL}/api/operations/dashboard`);
+      const response = await fetch(`${BACKEND_URL}/api/admin/country-data/${countryCode}?admin=admin-dev-key`);
       
       console.log('👑 [ADMIN] Respuesta HTTP:', response.status, response.statusText);
       
@@ -52,19 +108,53 @@ export function useAdminDashboardData(): UseAdminDashboardDataReturn {
         throw new Error(data.message || 'Error obteniendo datos del dashboard');
       }
 
-      if (!data.data || data.data.length === 0) {
+      // Extract operations from the country-data structure
+      const rawOperations = data.data?.operations || [];
+      const validation = data.data?.validation || {};
+
+      if (!rawOperations || rawOperations.length === 0) {
         console.warn('⚠️ [ADMIN] No se recibieron operaciones del backend');
-        console.log('Metadata:', data.metadata);
+        console.log('Validation:', validation);
       }
 
+      // Map backend data to frontend structure
+      const mappedOperations = rawOperations.map((op: any) => ({
+        id: op.id,
+        clientName: op.clienteCompleto || op.clientName || 'Sin nombre',
+        clientNit: op.clienteNit || 'Sin NIT',
+        providerName: op.proveedorBeneficiario || op.providerName || 'Sin proveedor',
+        totalValue: formatCurrency(op.valorTotal || 0, op.moneda || 'USD'),
+        totalValueNumeric: op.valorTotal || 0,
+        operationValue: formatCurrency(op.valorOperacion || op.valorTotal || 0, op.moneda || 'USD'),
+        operationValueNumeric: op.valorOperacion || op.valorTotal || 0,
+        route: op.rutaComercial || `${op.paisExportador || 'N/A'} → ${op.paisImportador || 'N/A'}`,
+        assignedPerson: op.personaAsignada || 'Sin asignar',
+        progress: op.progresoGeneral || op.progress || 0,
+        status: mapOperationStatus(op.progresoGeneral || 0),
+        currentPhaseName: getCurrentPhaseName(op.timeline),
+        timeline: mapTimeline(op.timeline),
+        updatedAt: op.ultimaActualizacion || op.updatedAt
+      }));
+
       console.log('✅ [ADMIN] Datos procesados correctamente:', {
-        operaciones: data.data.length,
-        validOperations: data.metadata.processingStats?.validOperations,
-        errorCount: data.metadata.processingStats?.errorCount
+        operaciones: mappedOperations.length,
+        validationErrors: validation.errors?.length || 0,
+        validationWarnings: validation.warnings?.length || 0,
+        sampleOperation: mappedOperations[0] // Log first operation for debugging
       });
 
-      setOperations(data.data || []);
-      setMetadata(data.metadata);
+      setOperations(mappedOperations);
+      
+      // Create metadata compatible with the expected structure
+      const metadata = {
+        lastUpdated: data.timestamp,
+        processingStats: {
+          validOperations: operations.length,
+          errorCount: validation.errors?.length || 0,
+          warningCount: validation.warnings?.length || 0
+        }
+      };
+      setMetadata(metadata);
 
     } catch (err) {
       console.error('❌ [ADMIN] Error completo fetching dashboard data:', {
@@ -79,13 +169,13 @@ export function useAdminDashboardData(): UseAdminDashboardDataReturn {
       setIsLoading(false);
       console.log('🏁 [ADMIN] Fetch completado');
     }
-  }, []);
+  }, [countryCode]);
 
   // Fetch initial data
   useEffect(() => {
-    console.log('👑 [ADMIN] Hook inicializado - Fetcheando datos...');
+    console.log(`👑 [ADMIN] Hook inicializado - Fetcheando datos de ${countryCode}...`);
     fetchAdminDashboardData();
-  }, []); // Empty dependency array - only run once
+  }, [fetchAdminDashboardData]); // Re-run when country changes
 
   const refetch = useCallback(() => {
     console.log('🔄 [ADMIN] REFETCH llamado - Volviendo a fetchear datos...');

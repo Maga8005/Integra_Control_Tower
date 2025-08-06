@@ -12,6 +12,13 @@ export default function OperationDetail() {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const { showError } = useNotifications();
 
+  // Debug logging for operation ID
+  console.log('🔍 [OPERATION DETAIL PAGE] Component loaded:', {
+    operationId,
+    pathname: window.location.pathname,
+    searchParams: window.location.search
+  });
+
   // Redirect if not authenticated  
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

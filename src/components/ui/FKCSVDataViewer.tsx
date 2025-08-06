@@ -22,6 +22,9 @@ interface FKCSVDataViewerProps {
 }
 
 export default function FKCSVDataViewer({ className }: FKCSVDataViewerProps) {
+  // Country selection state
+  const [selectedCountry, setSelectedCountry] = useState<'CO' | 'MX'>('CO');
+  
   const {
     csvData,
     csvFields,
@@ -36,7 +39,7 @@ export default function FKCSVDataViewer({ className }: FKCSVDataViewerProps) {
     refreshOperations,
     hasData,
     lastUpdated
-  } = useCSVData();
+  } = useCSVData(selectedCountry);
 
   // Local state
   const [activeTab, setActiveTab] = useState<'csv' | 'processed'>('csv');
@@ -134,6 +137,24 @@ export default function FKCSVDataViewer({ className }: FKCSVDataViewerProps) {
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Country Selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">País:</label>
+            <select
+              value={selectedCountry}
+              onChange={(e) => {
+                const newCountry = e.target.value as 'CO' | 'MX';
+                setSelectedCountry(newCountry);
+                console.log(`🌍 CSV Viewer - Cambiando a país: ${newCountry}`);
+              }}
+              disabled={isLoadingCSV}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="CO">🇨🇴 Colombia</option>
+              <option value="MX">🇲🇽 México</option>
+            </select>
+          </div>
+          
           <button
             onClick={refreshCSVData}
             disabled={isLoadingCSV}

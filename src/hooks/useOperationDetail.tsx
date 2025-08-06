@@ -121,56 +121,55 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`${BACKEND_URL}/api/operations/${operationId}`);
+      // Use the dedicated operation endpoint
+      const url = `${BACKEND_URL}/api/operations/${operationId}`;
+      console.log(`📞 Llamando a: ${url}`);
       
-      console.log('🌐 Respuesta HTTP:', response.status, response.statusText);
+      const response = await fetch(url);
+      console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
       
       if (!response.ok) {
         if (response.status === 404) {
-          throw new Error(`Operación con ID ${operationId} no encontrada`);
+          throw new Error('Operación no encontrada');
         }
-        const errorText = await response.text();
-        console.error('❌ Error HTTP:', response.status, errorText);
-        throw new Error(`Error del servidor: ${response.status} - ${errorText}`);
+        throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
       }
 
       const data: OperationDetailResponse = await response.json();
       
-      console.log('📄 Datos de operación recibidos:', {
-        success: data.success,
-        operationId: data.data?.id,
-        clientName: data.data?.clienteCompleto,
-        incoterms: data.data?.incoterms,
-        liberaciones: data.data?.liberaciones?.length || 0
-      });
-
       if (!data.success) {
-        console.error('❌ Backend reportó error:', data.message);
-        throw new Error(data.message || 'Error obteniendo detalles de la operación');
+        throw new Error(data.message || 'Error obteniendo detalles de operación');
       }
 
-      if (!data.data) {
-        console.warn('⚠️ No se recibieron datos de la operación');
-        throw new Error('No se encontraron datos para esta operación');
-      }
+      const operation = data.data;
+      
+      console.log('📄 Datos de operación recibidos:', {
+        operationId: operation.id,
+        clientName: operation.clienteCompleto,
+        incoterms: operation.incoterms,
+        liberaciones: operation.liberaciones?.length || 0,
+        hasTimeline: !!operation.timeline
+      });
 
       console.log('✅ Operación procesada correctamente:', {
-        id: data.data.id,
-        cliente: data.data.clienteCompleto,
-        proveedor: data.data.proveedorBeneficiario,
-        progress: data.data.progresoGeneral,
-        hasTimeline: !!data.data.timeline,
-        incoterms: data.data.incoterms,
-        liberacionesCount: data.data.liberaciones?.length || 0
+        id: operation.id,
+        cliente: operation.clienteCompleto,
+        proveedor: operation.proveedorBeneficiario,
+        progress: operation.progresoGeneral,
+        hasTimeline: !!operation.timeline,
+        incoterms: operation.incoterms,
+        liberacionesCount: operation.liberaciones?.length || 0
       });
 
-      setOperation(data.data);
+      setOperation(operation);
 
     } catch (err) {
       console.error('❌ Error obteniendo detalles de operación:', {
         operationId,
+        endpoint: `${BACKEND_URL}/api/operations/${operationId}`,
         error: err,
-        message: err instanceof Error ? err.message : 'Error desconocido'
+        message: err instanceof Error ? err.message : 'Error desconocido',
+        stack: err instanceof Error ? err.stack : undefined
       });
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setOperation(null);
@@ -181,6 +180,12 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
   };
 
   useEffect(() => {
+    console.log('🔍 [OPERATION DETAIL HOOK] useEffect triggered:', {
+      operationId,
+      hasOperationId: !!operationId,
+      operationIdType: typeof operationId
+    });
+    
     if (operationId) {
       fetchOperationDetail();
     } else {

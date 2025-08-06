@@ -1,0 +1,83 @@
+Nombre,Completado,Persona asignada,Fecha de vencimiento,Proceso,1. ESTADO Firma Cotización,1. Cotización PDF,5. ESTADO Compra Int,5. Doc Compra Int,3. ESTADO Doc Legal General,3. Doc Legales Integra,2. ESTADO factura Cuota Operacional,2. Factura Cuota Operacional,Item ID,6. Link de Cotización,6. GIRO #,7. Estrategia / Intereses,7. ESTADO Estrategia,8. ESTADO Doc Legal X Comp,8. Doc Legal X Comp,9. ESTADO Proforma / Factura final,9. Proforma / Factura final,10. ESTADO Giro Proveedor,10. Swift de Pago Proveedor,14.Monto Pre/Liberación,5. Proforma Proveedor,4. Soporte Pago CO Cliente,14. Fecha de Liberación,4. ESTADO pago Cuota Operacional,10. Info por GIRO Proveedor,5. Info Gnal + Info Compra Int,6. ESTADO Link Cotización,15. Equipo Comercial,1.Docu. Cliente
+<#C096CL5QHSA|>,FALSE,,,3. Componente No 1 Plataforma - Giro 1 Proveedor Internacional,Listo,F096GA545TL,Aprobada,"F097FP2B929,F0971BKAEGP",Listo,F096BKJD231,Listo,F096J63B55G,C096CL5QHSA,"{""originalUrl"":""https:\/\/docs.google.com\/spreadsheets\/d\/1B5eLKltCxcW6aTMvvM2qBKCaHcpmKYyj\/edit?gid=281582935#gid=281582935"",""attachment"":{},""displayAsUrl"":false}",Giro 1 / Financiamiento,F097D3NKR63,Listo,Listo,F097TKYJKRT,Listo - Proforma,F098A495BSM,,,,F097WBU3QG1,F0978CD68A0,,Listo,,"- CLIENTE: ADVANCED GEAR OILFIELD SERVICES SAS
+- PAÍS IMPORTADOR: COLOMBIA
+- PAÍS EXPORTADOR: CHINA
+- VALOR TOTAL DE COMPRA: 98470
+- MONEDA DE PAGO SOLICITADO: USD NA
+- TÉRMINOS DE PAGO: 30% ADVANCE / 70% AGAINST BL COPY
+
+*******DATOS BANCARIOS*******
+
+- BENEFICIARIO: CHINA VIGOR DRILLING OIL TOOLS AND EQUIPMENT CO., LTD.
+- BANCO: CHINA ZHESHANG BANK CO., LTD.(XI'AN BRANCH)
+- DIRECCIÓN: No.16 FENGHUI SOUTH ROAD, YANTA DISTRICT , XI'AN,CHINA (710065)
+- NÚMERO DE CUENTA: 7910000011420100035262
+- SWIFT: ZJCBCN2N
+*************************
+- INCOTERM COMPRA: FOB - SHANGHAI
+- INCOTERM VENTA: DAP - DAP
+- OBSERVACIONES: ",Listo,andres.perdomo@finkargo.com,"- CLIENTE: ADVANCED GEAR OILFIELD SERVICES SAS
+- NIT: 9014312557
+- VALOR OPERACIÓN: 105851"
+<#C097CT2BG66|>,FALSE,,,2. Docu Legal Gnal / Cuota Op / Nego Int,Listo,F0981BQ329E,,,Listo,F098F1B0WLR,Listo,F09725H25F1,C097CT2BG66,,,,,,,,,,,,,F097L6X4NLX,,Listo,,,,juan.cuellar@finkargo.com,"- CLIENTE: ELECTRIC S.A.S
+- NIT: 9005856193
+- VALOR OPERACIÓN: 26068"
+<#C098DPN71M0|>,FALSE,,,2. Docu Legal Gnal / Cuota Op / Nego Int,Listo,F098BRNQR61,Solicitado,,,,Solicitado,,C098DPN71M0,,,,,,,,,,,,,,,,,,,julian.hadad@finkargo.com,"- CLIENTE: ARTZENAL S.A.S
+-NIT:9014131508
+- VALOR OPERACIÓN: 26919"
+<#C0992RDCA8Y|>,FALSE,,,2. Docu Legal Gnal / Cuota Op / Nego Int,Listo,F0992RZ8A8G,Solicitado,,,,Solicitado,,C0992RDCA8Y,,,,,,,,,,,,,,,,,,,juan.penagos@finkargo.com,"- CLIENTE: APROGAN S.A.S
+-NIT:900326221
+- VALOR OPERACIÓN: 37325"
+<#C098C77E2K0|>,FALSE,,,2. Docu Legal Gnal / Cuota Op / Nego Int,Listo,F09930B3R88,Solicitado,,,,Solicitado,,C098C77E2K0,,,,,,,,,,,,,,,,,,,andres.perdomo@finkargo.com,"- CLIENTE: DEVX S.A.S
+-NIT:901672735
+- VALOR OPERACIÓN: 36745"
+<#C095VK2905C|>,FALSE,,,7. Cierre de Operación,Listo,F095XLM05T7,Aprobada,F095YQRGZ1Q,Listo,F0960FLAD4L,Listo,F0960FAQQVA,C095VK2905C,"{""originalUrl"":""https:\/\/docs.google.com\/spreadsheets\/d\/1vsvadtKRoLe7_XD5T-mJSmElX5cH11h3QXJDKjTlN_s\/edit?gid=13204065#gid=13204065"",""attachment"":{},""displayAsUrl"":false}",Liberación 1,F096MHFPWM6,Listo,Listo,F096MHFPWM6,Listo - Factura Final,F096CFXL6QZ,Listo - Pago Confirmado,F0960L13K5J,30000 USD,F095VNWCH4N,F095XM73EAZ,2025-07-25,Listo,"- VALOR SOLICITADO: 70000
+- NÚMERO DE GIRO: 2do Giro a Proveedor
+- PORCENTAJE DE GIRO: 70% del total","- CLIENTE: MALE
+- PAÍS IMPORTADOR: MÉXICO
+- PAÍS EXPORTADOR: CHINA
+- VALOR TOTAL DE COMPRA: 80000
+- MONEDA DE PAGO SOLICITADO: USD NA
+- TÉRMINOS DE PAGO: 30% ADVANCE / 70% AGAINST BL COPY
+
+*******DATOS BANCARIOS*******
+
+- BENEFICIARIO: BANCO BBVA
+- BANCO: 4567896
+- DIRECCIÓN: SHANGHAI 10256899 
+- NÚMERO DE CUENTA: 46587966666
+- SWIFT: BSHANGBB
+*************************
+- ICOTERM COMPRA: FOB - SHANGHAI
+- ICOTERM VENTA: DAP - ZONA FRANCA
+- OBSERVACIONES: 
+-----------------------
+- VALOR SOLICITADO: 20000
+- NÚMERO DE GIRO: 1er Giro a Proveedor
+- PORCENTAJE DE GIRO: 30% del total
+--------------
+- VALOR SOLICITADO: 60000
+- NÚMERO DE GIRO: 2do Giro a Proveedor
+- PORCENTAJE DE GIRO: 70% del total
+---------------
+- Liberación 1
+- Capital: 
+40000 USD
+- Fecha: 2025-07-25
+---------------
+- Liberación 2
+- Capital: 
+20000 USD
+- Fecha: 2025-08-07
+---------
+- Liberación 3
+- Capital: 
+20000 USD
+- Fecha: 2025-09-11
+---------
+NPS
+- Inconvenientes: No
+- Descripción inconvenientes: Acabamos muchisimas gracias a todos!
+- Calificación (1 mala - 5 buena): 5",Listo,maria.gaitan@finkargo.com,"- CLIENTE: PRUEBA 2
+- NIT:901672735
+- VALOR OPERACIÓN: 98600"

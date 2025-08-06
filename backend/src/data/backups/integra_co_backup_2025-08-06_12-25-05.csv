@@ -17,5 +17,28 @@ Nombre,Completado,"Persona asignada","Fecha de vencimiento",Proceso,"1. ESTADO F
 - INCOTERM COMPRA: FOB - SHANGHAI
 - INCOTERM VENTA: DAP - DAP
 - OBSERVACIONES: ",Listo,andres.perdomo@finkargo.com,
-<#C097CT2BG66|>,false,,,"2. Docu Legal Gnal / Cuota Op / Nego Int",Listo,F0981BQ329E,,,Listo,F098F1B0WLR,Listo,F09725H25F1,C097CT2BG66,,,,,,,,,,,,,F097L6X4NLX,,Listo,,,,juan.cuellar@finkargo.com,
-<#C098DPN71M0|>,false,,,"2. Docu Legal Gnal / Cuota Op / Nego Int",Listo,F098BRNQR61,Solicitado,,,,Solicitado,,C098DPN71M0,,,,,,,,,,,,,,,,,,,julian.hadad@finkargo.com,
+<#C097CT2BG66|>,false,,,"2. Docu Legal Gnal / Cuota Op / Nego Int",Listo,F0981BQ329E,Aprobada,"F09981TLN0J,F099A2GR1T6",Listo,F098F1B0WLR,Listo,F09725H25F1,C097CT2BG66,,,,,,,,,,,,F0996H32STX,F097L6X4NLX,,Listo,,"- CLIENTE: ELECTRIC SAS
+- PAÍS IMPORTADOR: COLOMBIA
+- PAÍS EXPORTADOR: CHINA
+- VALOR TOTAL DE COMPRA: 20781.25
+- MONEDA DE PAGO SOLICITADO: USD NA
+- TÉRMINOS DE PAGO: 50% ADVANCE / 50% AGAINST BL COPY
+
+*******DATOS BANCARIOS*******
+
+- NOMBRE BENEFICIARIO: Shenzhen Topband Co., LTD
+- DIRECCIÓN DE BENEFICIARIO: Topband Industrial Park, TangTou, Shiyan, Bao'An District, Shenzhen, China
+- CÓDIGO POSTAL: 518040
+- PROVINCIA/ ESTADO: SHENZHEN
+- NOMBRE DE BANCO: BANK OF CHINA, SHENZHEN HETAOHUANGGANG BRANCH
+- NÚMERO DE CUENTA: 765378843489
+- SWIFT: BKCHCNBJ45A
+- NOMBRE BANCO INTERMEDIARIO: 
+- SWIFT BANCO INTERMEDIARIO: 
+*************************
+- INCOTERM COMPRA: FOB - SHENZHEN
+- INCOTERM VENTA: DAP - ZF BOGOTA
+- OBSERVACIONES: ",,juan.cuellar@finkargo.com,
+<#C098DPN71M0|>,false,,,"2. Docu Legal Gnal / Cuota Op / Nego Int",Listo,F098BRNQR61,Solicitado,,Listo,"F098LRZJQVD,F099GU53533",Listo,F098J27RWGM,C098DPN71M0,,,,,,,,,,,,,,,,,,,julian.hadad@finkargo.com,
+<#C0992RDCA8Y|>,false,,,"2. Docu Legal Gnal / Cuota Op / Nego Int",Listo,F0992RZ8A8G,Solicitado,,Listo,F098XEDEC83,Listo,F098H1TFMGC,C0992RDCA8Y,,,,,,,,,,,,,,,,,,,juan.penagos@finkargo.com,
+<#C098C77E2K0|>,false,,,"2. Docu Legal Gnal / Cuota Op / Nego Int",Listo,F09930B3R88,Solicitado,,Listo,F098XSCDMBQ,Listo,F0997QBBT5E,C098C77E2K0,,,,,,,,,,,,,,,,,,,andres.perdomo@finkargo.com,

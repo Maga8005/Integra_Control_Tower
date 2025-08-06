@@ -100,7 +100,10 @@ function getPhaseConfig(phaseName: string) {
 
 export default function FKAdminDashboard() {
   const navigate = useNavigate();
-  const { operations, isLoading, error, metadata, refetch } = useAdminDashboardData();
+  
+  // Local state for filters and country selection
+  const [selectedCountry, setSelectedCountry] = useState<'CO' | 'MX'>('CO');
+  const { operations, isLoading, error, metadata, refetch } = useAdminDashboardData(selectedCountry);
   
   // Local state for filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,6 +176,10 @@ export default function FKAdminDashboard() {
   };
 
   const handleOperationClick = (operationId: string) => {
+    console.log('🔍 [ADMIN DASHBOARD] Navegando a operación:', {
+      operationId,
+      url: `/admin/operation/${operationId}`
+    });
     navigate(`/admin/operation/${operationId}`);
   };
 
@@ -224,7 +231,7 @@ export default function FKAdminDashboard() {
       const formData = new FormData();
       formData.append('csvFile', file);
 
-      const response = await fetch('http://localhost:3001/api/admin/upload-csv', {
+      const response = await fetch(`http://localhost:3001/api/admin/upload-country-csv/${selectedCountry}`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -235,9 +242,10 @@ export default function FKAdminDashboard() {
       const result = await response.json();
 
       if (result.success) {
+        const countryName = selectedCountry === 'CO' ? 'Colombia' : 'México';
         setUploadResult({
           success: true,
-          message: result.message,
+          message: `${result.message} (${countryName})`,
           summary: result.data?.summary
         });
         
@@ -354,6 +362,24 @@ export default function FKAdminDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              {/* Country Selector */}
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium text-gray-700">País:</label>
+                <select
+                  value={selectedCountry}
+                  onChange={(e) => {
+                    const newCountry = e.target.value as 'CO' | 'MX';
+                    setSelectedCountry(newCountry);
+                    console.log(`🌍 Cambiando a país: ${newCountry}`);
+                  }}
+                  disabled={isUploading}
+                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="CO">🇨🇴 Colombia</option>
+                  <option value="MX">🇲🇽 México</option>
+                </select>
+              </div>
+
               {/* Upload CSV Button */}
               <div className="relative">
                 <input
@@ -374,7 +400,7 @@ export default function FKAdminDashboard() {
                   )}
                 >
                   <Upload className={cn("h-4 w-4", isUploading && "animate-pulse")} />
-                  {isUploading ? 'Subiendo...' : 'Subir CSV'}
+                  {isUploading ? `Subiendo ${selectedCountry}...` : `Subir CSV ${selectedCountry}`}
                 </label>
               </div>
 

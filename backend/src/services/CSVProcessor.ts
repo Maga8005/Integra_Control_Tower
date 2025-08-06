@@ -1,7 +1,7 @@
 /**
  * Procesador CSV para leer archivo real de operaciones Integra
  * Maneja las 19 filas reales con mapeo exacto de estados
- * Integra Control Tower MVP
+ * Integra Control Tower MVP - Soporte multi-país (Colombia y México)
  */
 
 import fs from 'fs';
@@ -14,6 +14,7 @@ import { calculatePreciseProgress } from './ProgressCalculator';
 import { validateCompleteTimeline } from './PhaseValidator';
 import { generateRealisticDates, calculateMissingVencimientos, isVencimientoProximo, isVencimientoVencido } from '../utils/dateUtils';
 import { extractClienteNitFromDocColumn } from '../utils/nitUtils';
+import { CountryCode, detectCountryFromCSV, COUNTRY_CONFIGS } from '../utils/csvMappers';
 
 export interface CSVRow {
   [key: string]: string;
@@ -23,6 +24,8 @@ export interface ProcessingResult {
   success: boolean;
   data?: OperationDetail[];
   rawData?: CSVRow[]; // NUEVO: Datos CSV en crudo
+  countryCode?: CountryCode; // NUEVO: País detectado
+  countryName?: string; // NUEVO: Nombre del país
   errors: string[];
   warnings: string[];
   totalProcessed: number;
@@ -36,18 +39,19 @@ export class CSVProcessor {
   
   private static readonly REQUIRED_COLUMNS = [
     'Nombre',
-    'Completado',
+    'Completado', 
     'Persona asignada',
     'Proceso',
-    '1.Docu. Cliente',
     '5. Info Gnal + Info Compra Int'
+    // Nota: '1.Docu. Cliente' puede variar entre '1. Docu. Cliente' y '1.Docu. Cliente'
   ];
   
 
   /**
    * Procesa el archivo CSV completo y convierte a OperationDetail[]
+   * ACTUALIZADO: Detecta automáticamente el país (Colombia o México)
    */
-  public static async processCSVFile(): Promise<ProcessingResult> {
+  public static async processCSVFile(csvPath?: string): Promise<ProcessingResult> {
     console.log('📄 Iniciando procesamiento de archivo CSV...');
     
     try {
@@ -56,11 +60,22 @@ export class CSVProcessor {
         throw new Error(`Archivo CSV no encontrado en: ${this.CSV_PATH}`);
       }
 
+      // Usar path proporcionado o el por defecto
+      const finalPath = csvPath || this.CSV_PATH;
+      
       // Leer archivo CSV
-      const csvContent = fs.readFileSync(this.CSV_PATH, 'utf-8');
+      const csvContent = fs.readFileSync(finalPath, 'utf-8');
       const rows = this.parseCSVContentRobust(csvContent);
       
       console.log(`📊 Archivo CSV leído: ${rows.length} filas encontradas`);
+      
+      // Detectar país basado en la estructura del primer registro válido
+      let countryCode: CountryCode = 'CO'; // Por defecto Colombia
+      if (rows.length > 0) {
+        countryCode = detectCountryFromCSV(rows[0]);
+      }
+      const config = COUNTRY_CONFIGS[countryCode];
+      console.log(`🌎 País detectado: ${config.name} (${countryCode})`);
 
       // Procesar cada fila
       const operations: OperationDetail[] = [];
@@ -74,7 +89,7 @@ export class CSVProcessor {
         try {
           const row = rows[i];
           if (!row) continue;
-          const operation = this.processCSVRow(row, i + 1);
+          const operation = this.processCSVRow(row, i + 1, countryCode);
           if (operation) {
             operations.push(operation);
             validOperations++;
@@ -106,6 +121,8 @@ export class CSVProcessor {
         success: errors.length === 0,
         data: operations,
         rawData: rows, // NUEVO: Incluir datos CSV crudos
+        countryCode, // NUEVO: País detectado
+        countryName: config.name, // NUEVO: Nombre del país
         errors,
         warnings,
         totalProcessed: rows.length,
@@ -119,6 +136,8 @@ export class CSVProcessor {
       return {
         success: false,
         rawData: [], // NUEVO: Array vacío en caso de error
+        countryCode: 'CO', // Por defecto Colombia en caso de error
+        countryName: 'Colombia',
         errors: [error instanceof Error ? error.message : 'Error desconocido'],
         warnings: [],
         totalProcessed: 0,
@@ -129,12 +148,14 @@ export class CSVProcessor {
 
   /**
    * Procesa una fila individual del CSV
+   * ACTUALIZADO: Incluye soporte para configuración por país
    */
-  public static processCSVRow(row: CSVRow, rowNumber: number): OperationDetail | null {
-    console.log(`🔄 Procesando fila ${rowNumber}...`);
+  public static processCSVRow(row: CSVRow, rowNumber: number, countryCode: CountryCode = 'CO'): OperationDetail | null {
+    const config = COUNTRY_CONFIGS[countryCode];
+    console.log(`🔄 Procesando fila ${rowNumber} (${config.name})...`);
 
-    // Validar columnas requeridas
-    const missingColumns = this.validateRequiredColumns(row);
+    // Validar columnas requeridas con flexibilidad para nombres de columnas
+    const missingColumns = this.validateRequiredColumnsFlexible(row, countryCode);
     if (missingColumns.length > 0) {
       throw new Error(`Columnas faltantes: ${missingColumns.join(', ')}`);
     }
@@ -144,13 +165,13 @@ export class CSVProcessor {
     let parsedInfo;
     
     if (infoGralText.trim()) {
-      parsedInfo = parseOperationInfo(infoGralText);
+      parsedInfo = parseOperationInfo(infoGralText, row);
     } else {
       console.warn(`⚠️ Fila ${rowNumber}: Campo "5. Info Gnal + Info Compra Int" está vacío, usando valores por defecto`);
       // Crear objeto con valores por defecto cuando no hay info general
       parsedInfo = {
         cliente: '',
-        paisImportador: 'Colombia', // Asumir Colombia por defecto
+        paisImportador: config.name, // Usar país detectado
         paisExportador: 'No especificado',
         valorTotalCompra: 0,
         monedaPago: 'USD' as any, // Cast to Currency enum
@@ -169,8 +190,8 @@ export class CSVProcessor {
       };
     }
     
-    // NUEVO: Extraer cliente y NIT de la columna "1.Docu. Cliente"
-    const docuClienteText = row['1.Docu. Cliente'] || '';
+    // NUEVO: Extraer cliente y NIT de la columna "1.Docu. Cliente" (flexible)
+    const docuClienteText = row['1.Docu. Cliente'] || row['1. Docu. Cliente'] || '';
     const clienteNitInfo = extractClienteNitFromDocColumn(docuClienteText);
     
     // Usar cliente extraído de "1.Docu. Cliente" como prioridad, con fallbacks
@@ -193,11 +214,11 @@ export class CSVProcessor {
     // 2. Calcular progreso preciso usando la nueva lógica
     const preciseProgress = calculatePreciseProgress(row, parsedInfo);
     
-    // 3. Generar timeline de 5 fases usando los datos CSV
-    const timeline = generateTimeline(row, parsedInfo);
+    // 3. Generar timeline de 5 fases usando los datos CSV con configuración de país
+    const timeline = generateTimeline(row, parsedInfo, countryCode);
     
-    // 4. Mapear estados individuales de los campos CSV
-    const estados = mapEstados(row);
+    // 4. Mapear estados individuales de los campos CSV con configuración de país
+    const estados = mapEstados(row, countryCode);
     
     // 5. Validar coherencia del timeline
     const validationContext = {
@@ -221,8 +242,9 @@ export class CSVProcessor {
     // 8. Usar progreso preciso en lugar del cálculo anterior
     const progresoGeneral = preciseProgress.totalProgress;
 
-    // 9. Generar ID único para la operación
-    const operationId = this.generateOperationId(clientName, rowNumber);
+    // 9. Generar ID único para la operación (usando valor único de columna "Nombre")
+    const nombreValue = row['Nombre'] || row['nombre'] || '';
+    const operationId = this.generateOperationId(clientName, rowNumber, nombreValue);
     
     // 10. Determinar moneda (por defecto USD si no se puede determinar)
     const moneda = parsedInfo.monedaPago || Currency.USD;
@@ -361,32 +383,51 @@ export class CSVProcessor {
 
     while (i < line.length) {
       const char = line[i];
+      const nextChar = line[i + 1];
       
       if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          // Comilla escapada
+        if (inQuotes && nextChar === '"') {
+          // Comilla escapada ("" dentro de campo)
           current += '"';
           i += 2;
+        } else if (inQuotes && (nextChar === ',' || nextChar === undefined)) {
+          // Final de campo quoted
+          inQuotes = false;
+          i++;
+        } else if (!inQuotes && (current === '' || current.trim() === '')) {
+          // Inicio de campo quoted (solo si estamos al inicio del campo)
+          inQuotes = true;
+          i++;
         } else {
-          // Cambiar estado de comillas
-          inQuotes = !inQuotes;
+          // Comilla literal dentro de contenido
+          current += char;
           i++;
         }
       } else if (char === ',' && !inQuotes) {
-        // Separador de campo
-        values.push(current.trim());
+        // Separador de campo válido
+        values.push(current);
         current = '';
         i++;
       } else {
+        // Contenido normal (incluye saltos de línea dentro de quotes)
         current += char;
         i++;
       }
     }
 
     // Agregar último valor
-    values.push(current.trim());
+    values.push(current);
     
-    return values;
+    // Limpiar valores: remover comillas externas y espacios solo si son comillas balanceadas
+    return values.map(value => {
+      // Remover comillas externas solo si están balanceadas
+      if (value.startsWith('"') && value.endsWith('"') && value.length >= 2) {
+        const cleaned = value.slice(1, -1);
+        // Convertir comillas dobles escapadas a comillas simples
+        return cleaned.replace(/""/g, '"').trim();
+      }
+      return value.trim();
+    });
   }
 
   /**
@@ -423,18 +464,30 @@ export class CSVProcessor {
         currentRowText = line;
       }
       
-      // Si tenemos un número par de comillas, la fila está completa
-      if (quoteCount % 2 === 0) {
+      // Verificar si la fila está completa:
+      // 1. Número par de comillas Y
+      // 2. La línea actual parece terminar un registro (heurística)
+      const seemsComplete = quoteCount % 2 === 0 && (
+        // Línea termina con comillas y algo más (no solo comillas)
+        (line.endsWith('"') && line.length > 1) ||
+        // O la siguiente línea comienza un nuevo registro (con <#)
+        (i + 1 < lines.length && lines[i + 1].startsWith('<#')) ||
+        // O es la última línea
+        (i === lines.length - 1)
+      );
+      
+      if (seemsComplete) {
         try {
           const values = this.parseCSVLine(currentRowText);
           
-          // Solo procesar si tenemos al menos algunas columnas
-          if (values.length >= Math.floor(headers.length * 0.5)) {
+          // Validar que tenemos un número razonable de columnas
+          if (values.length >= Math.floor(headers.length * 0.7)) {
             const row: CSVRow = {};
             headers.forEach((header, index) => {
               row[header] = values[index] || '';
             });
             rows.push(row);
+            console.log(`✅ Fila ${i} procesada: ${values.length}/${headers.length} columnas`);
           } else {
             console.warn(`⚠️ Fila ${i} descartada: muy pocas columnas (${values.length} vs ${headers.length})`);
           }
@@ -455,12 +508,13 @@ export class CSVProcessor {
     if (currentRowText.trim()) {
       try {
         const values = this.parseCSVLine(currentRowText);
-        if (values.length >= Math.floor(headers.length * 0.5)) {
+        if (values.length >= Math.floor(headers.length * 0.7)) {
           const row: CSVRow = {};
           headers.forEach((header, index) => {
             row[header] = values[index] || '';
           });
           rows.push(row);
+          console.log(`✅ Última fila procesada: ${values.length}/${headers.length} columnas`);
         }
       } catch (error) {
         console.warn(`⚠️ Última fila incompleta descartada: ${error}`);
@@ -478,12 +532,64 @@ export class CSVProcessor {
   }
 
   /**
-   * Genera ID único para la operación
+   * Validación flexible de columnas que maneja variaciones en nombres
    */
-  private static generateOperationId(cliente: string, rowNumber: number): string {
+  private static validateRequiredColumnsFlexible(row: CSVRow, countryCode: CountryCode): string[] {
+    const config = COUNTRY_CONFIGS[countryCode];
+    const missingColumns: string[] = [];
+    const rowKeys = Object.keys(row);
+    
+    // Validar columnas básicas
+    const basicColumns = ['Nombre', 'Completado', 'Persona asignada', 'Proceso', '5. Info Gnal + Info Compra Int'];
+    
+    for (const column of basicColumns) {
+      if (!rowKeys.includes(column)) {
+        missingColumns.push(column);
+      }
+    }
+    
+    // Validar columna de documentos cliente (flexible)
+    const hasDocuCliente = rowKeys.some(key => 
+      key === '1.Docu. Cliente' || 
+      key === '1. Docu. Cliente' ||
+      key === '1.Docu Cliente' ||
+      key.toLowerCase().includes('docu') && key.includes('cliente')
+    );
+    
+    if (!hasDocuCliente) {
+      missingColumns.push('1.Docu. Cliente (o variación)');
+    }
+    
+    console.log(`🔍 Validación flexible ${config.name}:`, {
+      rowKeys: rowKeys.length,
+      missingColumns: missingColumns.length,
+      hasDocuCliente
+    });
+    
+    return missingColumns;
+  }
+
+  /**
+   * Genera ID único para la operación (DETERMINÍSTICO)
+   * Usa el valor único de la columna "Nombre" para garantizar consistencia
+   */
+  private static generateOperationId(cliente: string, rowNumber: number, nombreValue?: string): string {
     const cleanClient = cliente.replace(/[^a-zA-Z0-9]/g, '').substring(0, 6).toUpperCase();
-    const timestamp = Date.now().toString().slice(-6);
-    return `${cleanClient}-${rowNumber.toString().padStart(2, '0')}-${timestamp}`;
+    
+    // Usar el valor único de la columna "Nombre" como base para el hash
+    const uniqueValue = nombreValue || `ROW-${rowNumber}`;
+    const dataToHash = `${cliente}-${uniqueValue}-${rowNumber}`;
+    let hash = 0;
+    for (let i = 0; i < dataToHash.length; i++) {
+      const char = dataToHash.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Convertir hash a número positivo de 6 dígitos
+    const hashString = Math.abs(hash).toString().slice(-6).padStart(6, '0');
+    
+    return `${cleanClient}-${rowNumber.toString().padStart(2, '0')}-${hashString}`;
   }
 
   /**

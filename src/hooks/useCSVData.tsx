@@ -83,7 +83,7 @@ export interface UseCSVDataResult {
 const API_BASE_URL = 'http://localhost:3001';
 const ADMIN_KEY = 'admin-dev-key';
 
-export function useCSVData(): UseCSVDataResult {
+export function useCSVData(countryCode: 'CO' | 'MX' = 'CO'): UseCSVDataResult {
   // State for raw CSV data
   const [csvData, setCsvData] = useState<any[] | null>(null);
   const [csvFields, setCsvFields] = useState<string[] | null>(null);
@@ -126,27 +126,38 @@ export function useCSVData(): UseCSVDataResult {
     setCsvError(null);
     
     try {
-      console.log('🔄 Fetching CSV data from backend...');
+      const countryName = countryCode === 'CO' ? 'Colombia' : 'México';
+      console.log(`🔄 Fetching CSV data from backend for ${countryName}...`);
       
-      // Get CSV data
-      const csvResponse: CSVDataResponse = await apiRequest('/api/admin/csv-data');
+      // Get country data (includes operations and metadata)
+      const countryResponse = await apiRequest(`/api/admin/country-data/${countryCode}`);
       
-      if (csvResponse.success) {
-        setCsvData(csvResponse.data.data);
-        setCsvMetadata(csvResponse.data.metadata);
-        console.log(`✅ CSV data loaded: ${csvResponse.data.data.length} records`);
+      if (countryResponse.success) {
+        const operations = countryResponse.data?.operations || [];
+        setCsvData(operations); // Set operations as CSV data
+        
+        // Create metadata from country response
+        const metadata = {
+          totalRecords: operations.length,
+          fields: operations.length > 0 ? Object.keys(operations[0]) : [],
+          lastUpdated: countryResponse.timestamp,
+          fileInfo: {
+            exists: operations.length > 0,
+            size: JSON.stringify(operations).length,
+            sizeFormatted: `${(JSON.stringify(operations).length / 1024).toFixed(2)} KB`,
+            lastModified: countryResponse.timestamp
+          },
+          processingStats: {
+            cacheStatus: 'fresh',
+            cacheAge: 0
+          }
+        };
+        setCsvMetadata(metadata);
+        setCsvFields(metadata.fields);
+        
+        console.log(`✅ ${countryName} data loaded: ${operations.length} records`);
       } else {
-        throw new Error(csvResponse.message || 'Failed to fetch CSV data');
-      }
-      
-      // Get CSV fields
-      const fieldsResponse: CSVFieldsResponse = await apiRequest('/api/admin/csv-fields');
-      
-      if (fieldsResponse.success) {
-        setCsvFields(fieldsResponse.data.fields);
-        console.log(`✅ CSV fields loaded: ${fieldsResponse.data.fields.length} fields`);
-      } else {
-        console.warn('Failed to fetch CSV fields:', fieldsResponse.message);
+        throw new Error(countryResponse.message || `Failed to fetch ${countryName} data`);
       }
       
     } catch (error) {
@@ -156,7 +167,7 @@ export function useCSVData(): UseCSVDataResult {
     } finally {
       setIsLoadingCSV(false);
     }
-  }, []);
+  }, [countryCode]);
 
   // Fetch processed operations
   const fetchProcessedOperations = useCallback(async () => {
@@ -217,7 +228,7 @@ export function useCSVData(): UseCSVDataResult {
   useEffect(() => {
     fetchCSVData();
     fetchProcessedOperations();
-  }, [fetchCSVData, fetchProcessedOperations]);
+  }, [fetchCSVData, fetchProcessedOperations, countryCode]);
 
   // Computed values
   const hasData = (csvData && csvData.length > 0) || (processedOperations && processedOperations.length > 0);

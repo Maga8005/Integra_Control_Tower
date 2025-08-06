@@ -1,13 +1,14 @@
 /**
  * Generador de timeline de 5 fases exactas para operaciones Integra
  * Mapea los estados CSV a un timeline visual coherente
- * Integra Control Tower MVP
+ * Integra Control Tower MVP - Soporte multi-país (Colombia y México)
  */
 
 import { TimelineEvent, EstadoProceso } from '../types/Operation';
 import { CSVRow } from './CSVProcessor';
 import { ParsedOperationInfo } from './OperationInfoParser';
 import { mapEstados, calculatePaymentProgress, validateLiberations } from './StateMapper';
+import { CountryCode, COUNTRY_CONFIGS } from '../utils/csvMappers';
 
 export interface TimelinePhase {
   name: string;
@@ -53,11 +54,12 @@ const TIMELINE_PHASES: TimelinePhase[] = [
 /**
  * Genera timeline de 5 fases basado en datos CSV y información parseada
  */
-export function generateTimeline(csvRow: CSVRow, parsedInfo: ParsedOperationInfo): TimelineEvent[] {
-  console.log('⏱️ Generando timeline de 5 fases...');
+export function generateTimeline(csvRow: CSVRow, parsedInfo: ParsedOperationInfo, countryCode: CountryCode = 'CO'): TimelineEvent[] {
+  const config = COUNTRY_CONFIGS[countryCode];
+  console.log(`⏱️ Generando timeline de 5 fases (${config.name})...`);
 
   const timeline: TimelineEvent[] = [];
-  const estados = mapEstados(csvRow);
+  const estados = mapEstados(csvRow, countryCode);
   const paymentProgress = calculatePaymentProgress(parsedInfo);
   const liberationValidation = validateLiberations(parsedInfo);
 

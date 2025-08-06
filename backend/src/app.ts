@@ -128,7 +128,12 @@ app.get('/', (_req: Request, res: Response) => {
       api_info: '/api',
       admin_csv_data: '/api/admin/csv-data',
       admin_csv_fields: '/api/admin/csv-fields',
-      admin_upload_csv: '/api/admin/upload-csv', // NUEVO ENDPOINT
+      admin_upload_csv: '/api/admin/upload-csv',
+      admin_process_mexico: '/api/admin/process-mexico-csv',
+      admin_country_comparison: '/api/admin/country-comparison',
+      admin_upload_country: '/api/admin/upload-country-csv/:country', // NUEVO UNIFICADO
+      admin_country_data: '/api/admin/country-data/:country', // NUEVO UNIFICADO
+      admin_countries: '/api/admin/countries', // NUEVO UNIFICADO
       operations: '/api/operations',
       dashboard: '/api/operations/dashboard'
     },
@@ -189,7 +194,12 @@ app.get('/api', (_req: Request, res: Response) => {
         'GET /api/admin/csv-data - Datos raw del CSV (admin)',
         'GET /api/admin/csv-fields - Campos del CSV (admin)',
         'POST /api/admin/csv-refresh - Refrescar cache CSV (admin)',
-        'POST /api/admin/upload-csv - Cargar nuevo archivo CSV (admin)'
+        'POST /api/admin/upload-csv - Cargar nuevo archivo CSV (admin)',
+        'POST /api/admin/process-mexico-csv - Procesar CSV específico de México (admin)',
+        'GET /api/admin/country-comparison - Comparar estructuras CSV entre países (admin)',
+        'POST /api/admin/upload-country-csv/:country - Upload CSV por país unificado (admin)',
+        'GET /api/admin/country-data/:country - Obtener datos por país (admin)',
+        'GET /api/admin/countries - Listar países disponibles (admin)'
       ]
     },
     timestamp: new Date().toISOString()
@@ -255,6 +265,12 @@ app.get('/api/admin/csv-data', AdminController.getCSVData);
 app.get('/api/admin/csv-fields', AdminController.getCSVFields);
 app.post('/api/admin/csv-refresh', AdminController.refreshCSVCache);
 app.post('/api/admin/upload-csv', AdminController.getUploadMiddleware(), AdminController.uploadCSV);
+app.get('/api/admin/process-mexico-csv', AdminController.processMexicoCSV); // Cambiado a GET para testing
+app.get('/api/admin/country-comparison', AdminController.compareCountryCSVs);
+// NUEVOS ENDPOINTS UNIFICADOS
+app.post('/api/admin/upload-country-csv/:country', AdminController.getUploadMiddleware(), AdminController.uploadCountryCSV);
+app.get('/api/admin/country-data/:country', AdminController.getCountryData);
+app.get('/api/admin/countries', AdminController.getAvailableCountries);
 
 // Rutas de autenticación
 app.use('/api/auth', authRoutes);

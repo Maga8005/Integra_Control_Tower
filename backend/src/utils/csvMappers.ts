@@ -1,6 +1,6 @@
 /**
  * Funciones de mapeo específicas para conectar datos CSV con dashboard
- * Integra Control Tower MVP
+ * Integra Control Tower MVP - Soporte multi-país (Colombia y México)
  */
 
 // No necesitamos estas importaciones para las funciones básicas
@@ -16,6 +16,28 @@ export interface ParsedGeneralInfo {
   incotermVenta?: string;   // NUEVO: Incoterm de venta
 }
 
+// Configuración de países soportados
+export type CountryCode = 'CO' | 'MX';
+
+export interface CountryConfig {
+  code: CountryCode;
+  name: string;
+  hasDocLegalXComp: boolean; // México no tiene columnas "8. ESTADO Doc Legal X Comp"
+}
+
+export const COUNTRY_CONFIGS: Record<CountryCode, CountryConfig> = {
+  CO: {
+    code: 'CO',
+    name: 'Colombia',
+    hasDocLegalXComp: true
+  },
+  MX: {
+    code: 'MX', 
+    name: 'México',
+    hasDocLegalXComp: false
+  }
+};
+
 export interface ProgressInfo {
   currentStep: number;
   percentage: number;
@@ -29,6 +51,9 @@ export interface CSVRowData {
 
 // Import timeline types
 import { Timeline, mapCompleteTimeline } from './timelineMapper';
+
+// Import operation types for giros and liberaciones
+import { GiroInfo, Liberacion, EstadoProceso } from '../types/Operation';
 
 // Interface para OperationCard del dashboard
 export interface OperationCard {
@@ -46,6 +71,8 @@ export interface OperationCard {
   timeline?: Timeline;       // NUEVO: Datos del timeline de 5 estados
   incotermCompra?: string;   // NUEVO: Incoterm de compra (ej: FOB, DAP)
   incotermVenta?: string;    // NUEVO: Incoterm de venta (ej: CIF, DDP)
+  giros: GiroInfo[];         // NUEVO: Array de giros estructurados
+  liberaciones: Liberacion[]; // NUEVO: Array de liberaciones estructuradas
   createdAt?: string;
   updatedAt?: string;
 }
@@ -457,11 +484,31 @@ export function extractClientNit(docuClienteValue: string): string {
 }
 
 /**
+ * Detecta el país basado en la estructura del CSV
+ * México: 32 columnas (sin "8. ESTADO Doc Legal X Comp" y "8. Doc Legal X Comp")
+ * Colombia: 34 columnas (con todas las columnas)
+ */
+export function detectCountryFromCSV(csvRow: CSVRowData): CountryCode {
+  const keys = Object.keys(csvRow);
+  const hasDocLegalXComp = keys.some(key => key.includes('8. ESTADO Doc Legal X Comp'));
+  
+  const detectedCountry = hasDocLegalXComp ? 'CO' : 'MX';
+  console.log(`🌎 País detectado: ${COUNTRY_CONFIGS[detectedCountry].name} (${keys.length} columnas, Doc Legal X Comp: ${hasDocLegalXComp})`);
+  
+  return detectedCountry;
+}
+
+/**
  * 4. Función principal de mapeo CSV a OperationCard para Dashboard
  * Combina todas las funciones anteriores para transformar una fila CSV completa
+ * ACTUALIZADO: Soporte multi-país
  */
-export function mapCSVToOperationCard(csvRow: CSVRowData): OperationCard {
-  console.log('🎯 Mapeando fila CSV a OperationCard para dashboard...');
+export function mapCSVToOperationCard(csvRow: CSVRowData, countryCode?: CountryCode): OperationCard {
+  // Detectar país si no se especifica
+  const country = countryCode || detectCountryFromCSV(csvRow);
+  const config = COUNTRY_CONFIGS[country];
+  
+  console.log(`🎯 Mapeando fila CSV a OperationCard para dashboard (${config.name})...`);
   
   try {
     // Extraer campos específicos del CSV
@@ -477,11 +524,15 @@ export function mapCSVToOperationCard(csvRow: CSVRowData): OperationCard {
     // Extraer NIT del cliente
     const clientNit = extractClientNit(docuCliente);
     
+    // Extraer giros y liberaciones estructurados
+    const giros = extractGirosFromInfoGeneral(infoGeneral);
+    const liberaciones = extractLiberacionesFromInfoGeneral(infoGeneral);
+    
     // Calcular progreso
     const progressInfo = calculateProgressFromProceso(proceso);
 
-    // Generar timeline de 5 estados
-    const timeline = mapCompleteTimeline(csvRow);
+    // Generar timeline de 5 estados con configuración de país
+    const timeline = mapCompleteTimeline(csvRow, country);
     
     // Usar progreso del timeline si está disponible, sino usar el calculado anterior
     const finalProgress = timeline ? timeline.overallProgress : Math.round(progressInfo.percentage);
@@ -552,6 +603,8 @@ export function mapCSVToOperationCard(csvRow: CSVRowData): OperationCard {
       timeline: timeline, // NUEVO: Timeline de 5 estados
       incotermCompra: parsedInfo.incotermCompra, // NUEVO: Incoterm de compra
       incotermVenta: parsedInfo.incotermVenta,   // NUEVO: Incoterm de venta
+      giros: giros, // NUEVO: Array de giros estructurados
+      liberaciones: liberaciones, // NUEVO: Array de liberaciones estructuradas
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -561,7 +614,9 @@ export function mapCSVToOperationCard(csvRow: CSVRowData): OperationCard {
       clientName: operationCard.clientName,
       clientNit: operationCard.clientNit,
       progress: operationCard.progress,
-      status: operationCard.status
+      status: operationCard.status,
+      girosCount: operationCard.giros.length,
+      liberacionesCount: operationCard.liberaciones.length
     });
 
     return operationCard;
@@ -583,6 +638,8 @@ export function mapCSVToOperationCard(csvRow: CSVRowData): OperationCard {
       status: 'draft',
       incotermCompra: undefined, // NUEVO: Incoterm de compra
       incotermVenta: undefined,  // NUEVO: Incoterm de venta
+      giros: [], // NUEVO: Array vacío de giros
+      liberaciones: [], // NUEVO: Array vacío de liberaciones
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -592,18 +649,165 @@ export function mapCSVToOperationCard(csvRow: CSVRowData): OperationCard {
 /**
  * 6. Función para mapear múltiples filas CSV a OperationCard
  * Procesa un array completo de datos CSV para el dashboard
+ * ACTUALIZADO: Soporte multi-país
  */
-export function mapMultipleCSVToCards(csvRows: CSVRowData[]): OperationCard[] {
-  console.log(`🎯 Mapeando ${csvRows.length} filas CSV a OperationCards...`);
+export function mapMultipleCSVToCards(csvRows: CSVRowData[], countryCode?: CountryCode): OperationCard[] {
+  // Detectar país del primer registro si no se especifica
+  const country = countryCode || (csvRows.length > 0 ? detectCountryFromCSV(csvRows[0]) : 'CO');
+  const config = COUNTRY_CONFIGS[country];
+  
+  console.log(`🎯 Mapeando ${csvRows.length} filas CSV a OperationCards (${config.name})...`);
   
   return csvRows.map((row, index) => {
     try {
-      return mapCSVToOperationCard(row);
+      return mapCSVToOperationCard(row, country);
     } catch (error) {
       console.error(`❌ Error en fila ${index}:`, error);
-      return mapCSVToOperationCard({}); // OperationCard por defecto
+      return mapCSVToOperationCard({}, country); // OperationCard por defecto
     }
   });
+}
+
+/**
+ * Función para extraer datos de giros estructurados de la columna "5. Info Gnal + Info Compra Int"
+ */
+export function extractGirosFromInfoGeneral(infoGeneralValue: string): GiroInfo[] {
+  console.log('💰 Extrayendo giros de Info General...');
+  
+  try {
+    const giros: GiroInfo[] = [];
+    
+    if (!infoGeneralValue || typeof infoGeneralValue !== 'string') {
+      return giros;
+    }
+
+    const cleanText = infoGeneralValue
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .trim();
+
+    // Dividir por secciones de giros usando "VALOR SOLICITADO:" como delimitador
+    const giroSections = cleanText.split(/(?=- VALOR SOLICITADO:)/i).filter(section => 
+      section.includes('VALOR SOLICITADO:')
+    );
+
+    console.log(`📊 Encontradas ${giroSections.length} secciones de giros`);
+
+    giroSections.forEach((section, index) => {
+      try {
+        // Extraer valor solicitado
+        const valorMatch = section.match(/VALOR SOLICITADO:\s*(\d+(?:\.\d+)?)/i);
+        const valorSolicitado = valorMatch ? parseFloat(valorMatch[1]) : 0;
+
+        // Extraer número de giro
+        const numeroMatch = section.match(/NÚMERO DE GIRO:\s*(.+?)(?=\n|- PORCENTAJE|$)/i);
+        const numeroGiro = numeroMatch ? numeroMatch[1].trim() : `Giro ${index + 1}`;
+
+        // Extraer porcentaje de giro
+        const porcentajeMatch = section.match(/PORCENTAJE DE GIRO:\s*(.+?)(?=\n|$)/i);
+        const porcentajeGiro = porcentajeMatch ? porcentajeMatch[1].trim() : '';
+
+        if (valorSolicitado > 0) {
+          const giro: GiroInfo = {
+            valorSolicitado,
+            numeroGiro,
+            porcentajeGiro,
+            estado: EstadoProceso.PENDIENTE, // Se puede mejorar con lógica adicional
+            fechaVencimiento: undefined
+          };
+
+          giros.push(giro);
+          console.log(`💸 Giro extraído: ${giro.numeroGiro} - $${giro.valorSolicitado.toLocaleString()}`);
+        }
+      } catch (sectionError) {
+        console.warn(`⚠️ Error procesando sección de giro ${index + 1}:`, sectionError);
+      }
+    });
+
+    return giros;
+
+  } catch (error) {
+    console.error('❌ Error extrayendo giros:', error);
+    return [];
+  }
+}
+
+/**
+ * Función para extraer datos de liberaciones estructuradas de la columna "5. Info Gnal + Info Compra Int"
+ */
+export function extractLiberacionesFromInfoGeneral(infoGeneralValue: string): Liberacion[] {
+  console.log('🔓 Extrayendo liberaciones de Info General...');
+  
+  try {
+    const liberaciones: Liberacion[] = [];
+    
+    if (!infoGeneralValue || typeof infoGeneralValue !== 'string') {
+      return liberaciones;
+    }
+
+    const cleanText = infoGeneralValue
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .trim();
+
+    // Dividir por secciones de liberaciones usando "Liberación" como delimitador
+    const liberacionSections = cleanText.split(/(?=- Liberación \d+)/i).filter(section => 
+      section.match(/Liberación \d+/i)
+    );
+
+    console.log(`📊 Encontradas ${liberacionSections.length} secciones de liberaciones`);
+
+    liberacionSections.forEach((section, index) => {
+      try {
+        // Extraer número de liberación
+        const numeroMatch = section.match(/Liberación (\d+)/i);
+        const numero = numeroMatch ? parseInt(numeroMatch[1]) : index + 1;
+
+        // Extraer capital (puede estar en la siguiente línea)
+        const capitalMatch = section.match(/Capital:\s*(\d+(?:\.\d+)?)\s*USD/i) || 
+                           section.match(/(\d+(?:\.\d+)?)\s*USD/);
+        const capital = capitalMatch ? parseFloat(capitalMatch[1]) : 0;
+
+        // Extraer fecha
+        const fechaMatch = section.match(/Fecha:\s*(\d{4}-\d{2}-\d{2})/i);
+        const fecha = fechaMatch ? fechaMatch[1] : '';
+
+        if (capital > 0 && fecha) {
+          const fechaObj = new Date(fecha);
+          const ahora = new Date();
+          
+          const liberacion: Liberacion = {
+            numero,
+            capital,
+            fecha,
+            estado: fechaObj <= ahora ? EstadoProceso.COMPLETADO : EstadoProceso.PENDIENTE,
+            documentosRequeridos: [] // Se puede expandir en el futuro
+          };
+
+          liberaciones.push(liberacion);
+          console.log(`💰 Liberación extraída: #${liberacion.numero} - $${liberacion.capital.toLocaleString()} - ${liberacion.fecha}`);
+        }
+      } catch (sectionError) {
+        console.warn(`⚠️ Error procesando sección de liberación ${index + 1}:`, sectionError);
+      }
+    });
+
+    // Ordenar por número de liberación
+    liberaciones.sort((a, b) => a.numero - b.numero);
+
+    if (liberaciones.length > 0) {
+      const totalLiberado = liberaciones
+        .filter(lib => lib.estado === EstadoProceso.COMPLETADO)
+        .reduce((sum, lib) => sum + lib.capital, 0);
+      console.log(`✅ ${liberaciones.length} liberaciones procesadas. Total liberado: $${totalLiberado.toLocaleString()}`);
+    }
+
+    return liberaciones;
+
+  } catch (error) {
+    console.error('❌ Error extrayendo liberaciones:', error);
+    return [];
+  }
 }
 
 // Funciones auxiliares

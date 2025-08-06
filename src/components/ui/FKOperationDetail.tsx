@@ -184,17 +184,13 @@ export default function FKOperationDetail({
           <div className="flex items-center gap-3">
             <div className={cn(
               "p-2 rounded-lg",
-              operation.status === 'completed' ? 'bg-success-100' :
-              operation.status === 'in-progress' ? 'bg-primary-100' :
-              operation.status === 'on-hold' ? 'bg-yellow-100' :
-              'bg-gray-100'
+              operation.progresoGeneral >= 100 ? 'bg-success-100' :
+              operation.progresoGeneral > 0 ? 'bg-primary-100' : 'bg-gray-100'
             )}>
               <Package className={cn(
                 "h-5 w-5",
-                operation.status === 'completed' ? 'text-success-600' :
-                operation.status === 'in-progress' ? 'text-primary-600' :
-                operation.status === 'on-hold' ? 'text-yellow-600' :
-                'text-gray-600'
+                operation.progresoGeneral >= 100 ? 'text-success-600' :
+                operation.progresoGeneral > 0 ? 'text-primary-600' : 'text-gray-600'
               )} />
             </div>
             <div>
@@ -423,149 +419,218 @@ function OverviewTab({ operation, onStatusUpdate }: OverviewTabProps) {
         </div>
       </div>
 
-      {/* Información Financiera */}
+      {/* Información Financiera - Full Width */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
           <DollarSign className="h-5 w-5 text-success-600" />
           Información Financiera
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div>
-            <h5 className="font-medium text-gray-700 mb-3">Valores Financieros</h5>
-            <div className="space-y-3">
-              <div>
-                <p className="text-2xl font-bold text-primary-600">
-                  ${operation.valorOperacion?.toLocaleString()} {operation.moneda}
-                </p>
-                <p className="text-sm text-gray-600">Valor total operación</p>
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-gray-900">
-                  ${operation.valorTotal?.toLocaleString()} {operation.moneda}
-                </p>
-                <p className="text-sm text-gray-600">Valor compra mercancía</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
-                <div>
-                  <span className="text-gray-600">Liberado:</span>
-                  <p className="font-semibold text-success-600">
-                    ${operation.montosLiberados?.toLocaleString()} {operation.moneda}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-600">Pendiente:</span>
-                  <p className="font-semibold text-orange-600">
-                    ${operation.montosPendientes?.toLocaleString()} {operation.moneda}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+            
+        {/* Executive Summary */}
+        <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg p-6 mb-6">
+          <h6 className="font-semibold text-primary-800 mb-4 text-base">📈 RESUMEN EJECUTIVO</h6>
           
-          <div>
-            <h5 className="font-medium text-gray-700 mb-3">Liberaciones Ejecutadas</h5>
-            <div className="space-y-2">
-              {operation.liberaciones && operation.liberaciones.length > 0 ? (
-                <>
-                  {operation.liberaciones.map((liberacion, index) => (
-                    <div key={liberacion.numero} className="flex justify-between items-center">
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-600">Liberación {liberacion.numero}:</span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(liberacion.fecha).toLocaleDateString('es-ES', {
-                            year: 'numeric',
-                            month: 'short', 
-                            day: 'numeric'
-                          })}
-                        </span>
-                        {liberacion.fechaVencimiento && (
-                          <span className="text-xs text-gray-400">
-                            Vence: {new Date(liberacion.fechaVencimiento).toLocaleDateString('es-ES')}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <span className="font-medium text-success-600">
-                          ${liberacion.capital.toLocaleString()} {operation.moneda}
-                        </span>
-                        <div className={cn(
-                          "text-xs px-2 py-1 rounded-full mt-1",
-                          liberacion.estado === 'completado' ? 'bg-success-100 text-success-700' : 'bg-gray-100 text-gray-600'
-                        )}>
-                          {liberacion.estado === 'completado' ? 'Completado' : liberacion.estado}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
+              <p className="text-2xl font-bold text-primary-700 mb-1">
+                ${operation.valorOperacion?.toLocaleString()}
+              </p>
+              <p className="text-sm text-primary-600 font-medium">Total Operación</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
+              <p className="text-2xl font-bold text-gray-800 mb-1">
+                ${operation.valorTotal?.toLocaleString()}
+              </p>
+              <p className="text-sm text-gray-600 font-medium">Compra Mercancía</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
+              <p className="text-2xl font-bold text-success-600 mb-1">
+                ${operation.montosLiberados?.toLocaleString()}
+              </p>
+              <p className="text-sm text-success-600 font-medium">Total Liberaciones</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
+              <p className="text-2xl font-bold text-coral-600 mb-1">
+                $0
+              </p>
+              <p className="text-sm text-coral-600 font-medium">Extracostos</p>
+          </div>
+              
+        </div>
+
+        {/* Detailed Sections */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
+              
+          {/* Giros Section */}
+          <div className="bg-coral-50 rounded-lg p-6">
+            <h6 className="font-semibold text-gray-800 mb-4 text-base flex items-center gap-2">
+              📤 GIROS A PROVEEDORES
+            </h6>
+                
+                {operation.giros && operation.giros.length > 0 ? (
+                  <>
+                    <div className="space-y-2 mb-3">
+                      {operation.giros.map((giro, index) => (
+                        <div key={index} className="bg-white/80 rounded p-2">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-gray-800">{giro.numeroGiro}</p>
+                              <p className="text-xs text-gray-600">{giro.porcentajeGiro}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-gray-800 text-sm">
+                                ${giro.valorSolicitado.toLocaleString()}
+                              </p>
+                              <span className={cn(
+                                "text-xs px-2 py-1 rounded-full",
+                                giro.estado === 'completado' ? 'bg-success-100 text-success-700' : 
+                                giro.estado === 'en_proceso' ? 'bg-coral-100 text-coral-700' : 
+                                'bg-gray-100 text-gray-600'
+                              )}>
+                                {giro.estado === 'completado' ? 'Pagado' : 
+                                 giro.estado === 'en_proceso' ? 'Proceso' : 'Pendiente'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                    
+                    <div className="border-t border-gray-200 pt-2">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium text-gray-700">Total:</span>
+                        <span className="font-bold text-gray-800">
+                          ${operation.giros?.reduce((sum, giro) => sum + giro.valorSolicitado, 0).toLocaleString()}
+                        </span>
                       </div>
-                    </div>
-                  ))}
-                  <div className="pt-2 border-t border-gray-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">Total liberado:</span>
-                      <span className="font-semibold text-success-600">
-                        ${operation.montosLiberados?.toLocaleString()} {operation.moneda}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-xs text-gray-500">Pendiente por liberar:</span>
-                      <span className="text-xs font-medium text-gray-700">
-                        ${operation.montosPendientes?.toLocaleString()} {operation.moneda}
-                      </span>
-                    </div>
-                    <div className="mt-2">
-                      <div className="flex justify-between text-xs text-gray-600 mb-1">
-                        <span>Progreso de liberación</span>
-                        <span>{Math.round((operation.montosLiberados / operation.montoTotal) * 100)}%</span>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium text-gray-700">Pagado:</span>
+                        <span className="font-bold text-gray-800">
+                          ${operation.giros?.filter(g => g.estado === 'completado').reduce((sum, giro) => sum + giro.valorSolicitado, 0).toLocaleString()}
+                        </span>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
                         <div 
-                          className="bg-success-500 h-2 rounded-full transition-all duration-300"
+                          className="bg-success-500 h-1.5 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${Math.min(100, (operation.giros?.filter(g => g.estado === 'completado').reduce((sum, giro) => sum + giro.valorSolicitado, 0) / operation.giros?.reduce((sum, giro) => sum + giro.valorSolicitado, 0)) * 100)}%` 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-600 italic text-center py-4">Sin giros programados</p>
+                )}
+              </div>
+
+          {/* Liberaciones Section */}
+          <div className="bg-coral-50 rounded-lg p-6">
+            <h6 className="font-semibold text-gray-800 mb-4 text-base flex items-center gap-2">
+              📥 LIBERACIONES
+            </h6>
+                
+                {operation.liberaciones && operation.liberaciones.length > 0 ? (
+                  <>
+                    <div className="space-y-2 mb-3">
+                      {operation.liberaciones.map((liberacion, index) => (
+                        <div key={liberacion.numero} className="bg-white/80 rounded p-2">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-gray-800">Liberación {liberacion.numero}</p>
+                              <p className="text-xs text-gray-600">
+                                {new Date(liberacion.fecha).toLocaleDateString('es-ES')}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-semibold text-gray-800 text-sm">
+                                ${liberacion.capital.toLocaleString()}
+                              </p>
+                              <span className={cn(
+                                "text-xs px-2 py-1 rounded-full",
+                                liberacion.estado === 'completado' ? 'bg-success-100 text-success-700' : 'bg-gray-100 text-gray-600'
+                              )}>
+                                {liberacion.estado === 'completado' ? 'Ejecutada' : 'Programada'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="border-t border-gray-200 pt-2">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium text-gray-700">Liberado:</span>
+                        <span className="font-bold text-gray-800">
+                          ${operation.montosLiberados?.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div 
+                          className="bg-success-500 h-1.5 rounded-full transition-all duration-300"
                           style={{ 
                             width: `${Math.min(100, (operation.montosLiberados / operation.montoTotal) * 100)}%` 
                           }}
                         />
                       </div>
                     </div>
-                  </div>
-                </>
-              ) : (
-                <p className="text-sm text-gray-500 italic">Sin liberaciones ejecutadas aún</p>
-              )}
-            </div>
-          </div>
+                  </>
+                ) : (
+                  <p className="text-xs text-gray-600 italic text-center py-4">Sin liberaciones ejecutadas</p>
+                )}
+              </div>
 
-          <div>
-            <h5 className="font-medium text-gray-700 mb-3">Extracostos</h5>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Comisión bancaria:</span>
-                <span className="font-medium text-gray-900">
-                  $0 {operation.moneda}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Gastos logísticos:</span>
-                <span className="font-medium text-gray-900">
-                  $0 {operation.moneda}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Seguro de carga:</span>
-                <span className="font-medium text-gray-900">
-                  $0 {operation.moneda}
-                </span>
-              </div>
-              <div className="pt-2 border-t border-gray-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-gray-700">Total extracostos:</span>
-                  <span className="font-semibold text-coral-600">
-                    $0 {operation.moneda}
-                  </span>
+          {/* Extracostos Section */}
+          <div className="bg-coral-50 rounded-lg p-6">
+            <h6 className="font-semibold text-coral-800 mb-4 text-base flex items-center gap-2">
+              💸 EXTRACOSTOS
+            </h6>
+                
+                <div className="space-y-2 mb-3">
+                  <div className="bg-white/80 rounded p-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-coral-700">Comisión bancaria:</span>
+                      <span className="font-medium text-coral-800 text-xs">
+                        $0
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/80 rounded p-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-coral-700">Gastos logísticos:</span>
+                      <span className="font-medium text-coral-800 text-xs">
+                        $0
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white/80 rounded p-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-coral-700">Seguro de carga:</span>
+                      <span className="font-medium text-coral-800 text-xs">
+                        $0
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="border-t border-coral-200 pt-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-coral-700">Total:</span>
+                    <span className="font-bold text-coral-800">
+                      $0
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
 
