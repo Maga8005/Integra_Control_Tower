@@ -492,11 +492,19 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
                 <span className="text-sm text-gray-600">
                   {operation.clientName}
                 </span>
-                {operation.clientNit && (
-                  <span className="text-xs text-gray-400 font-mono">
-                    NIT: {operation.clientNit}
-                  </span>
-                )}
+                {operation.clientNit && (() => {
+                  const cleanNit = operation.clientNit.trim().toUpperCase();
+                  const isRFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(cleanNit);
+                  
+                  return (
+                    <span className={cn(
+                      "text-xs font-mono px-2 py-1 rounded",
+                      isRFC ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                    )}>
+                      {isRFC ? `RFC: ${operation.clientNit}` : `NIT: ${operation.clientNit}`}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>

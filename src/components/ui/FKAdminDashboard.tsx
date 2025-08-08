@@ -428,7 +428,7 @@ export default function FKAdminDashboard() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por cliente, proveedor, NIT o persona asignada..."
+                placeholder="Buscar por cliente, proveedor, RFC/NIT o persona asignada..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
@@ -549,7 +549,7 @@ export default function FKAdminDashboard() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
-                    Cliente / NIT
+                    Cliente / RFC-NIT
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
                     Proveedor
@@ -574,7 +574,13 @@ export default function FKAdminDashboard() {
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-medium text-gray-900">{operation.clientName}</p>
-                        <p className="text-sm text-gray-600">NIT: {operation.clientNit}</p>
+                        <p className="text-sm text-gray-600">
+                          {(() => {
+                            const cleanNit = operation.clientNit.trim().toUpperCase();
+                            const isRFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(cleanNit);
+                            return isRFC ? `RFC: ${operation.clientNit}` : `NIT: ${operation.clientNit}`;
+                          })()}
+                        </p>
                       </div>
                     </td>
                     <td className="px-4 py-4">

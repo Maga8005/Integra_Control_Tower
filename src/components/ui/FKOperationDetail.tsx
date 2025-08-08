@@ -147,7 +147,21 @@ export default function FKOperationDetail({
               {operation.clienteCompleto}
             </h1>
             {operation.clienteNit && (
-              <p className="text-sm text-gray-500 font-medium mt-1">NIT: {operation.clienteNit}</p>
+              <span className={cn(
+                "inline-block text-sm font-mono px-3 py-1 rounded-full mt-1",
+                // RFC mexicano (formato alfanumérico)
+                (() => {
+                  const cleanNit = operation.clienteNit.trim().toUpperCase();
+                  const isRFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(cleanNit);
+                  return isRFC ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700";
+                })()
+              )}>
+                {(() => {
+                  const cleanNit = operation.clienteNit.trim().toUpperCase();
+                  const isRFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(cleanNit);
+                  return isRFC ? `RFC: ${operation.clienteNit}` : `NIT: ${operation.clienteNit}`;
+                })()}
+              </span>
             )}
             <div className="text-gray-600 mt-1">
               <span>Proveedor: {operation.proveedorBeneficiario}</span>
@@ -310,7 +324,21 @@ function OverviewTab({ operation, onStatusUpdate }: OverviewTabProps) {
           <div>
             <h5 className="font-medium text-gray-700 mb-2">Cliente Completo</h5>
             <p className="text-lg font-semibold text-gray-900">{operation.clienteCompleto}</p>
-            <p className="text-sm text-gray-600">NIT: {operation.clienteNit}</p>
+            <span className={cn(
+              "inline-block text-sm font-mono px-2 py-1 rounded",
+              // RFC mexicano (formato alfanumérico)
+              (() => {
+                const cleanNit = operation.clienteNit.trim().toUpperCase();
+                const isRFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(cleanNit);
+                return isRFC ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700";
+              })()
+            )}>
+              {(() => {
+                const cleanNit = operation.clienteNit.trim().toUpperCase();
+                const isRFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(cleanNit);
+                return isRFC ? `RFC: ${operation.clienteNit}` : `NIT: ${operation.clienteNit}`;
+              })()}
+            </span>
             <p className="text-xs text-gray-500">Tipo: {operation.tipoEmpresa}</p>
           </div>
           <div>

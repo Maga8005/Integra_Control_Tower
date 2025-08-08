@@ -17,6 +17,46 @@ import { useCSVData } from '../../hooks/useCSVData';
 import { cn } from '../../utils/cn';
 import FKBackendStatus from './FKBackendStatus';
 
+// Función utilitaria para extraer RFC/NIT del texto
+interface ParsedRFC {
+  rfc: string;
+  type: 'RFC' | 'NIT' | 'UNKNOWN';
+}
+
+function extractRFCFromText(docuClienteValue: string): ParsedRFC {
+  if (!docuClienteValue || typeof docuClienteValue !== 'string') {
+    return { rfc: '', type: 'UNKNOWN' };
+  }
+
+  const cleanText = docuClienteValue.trim();
+  
+  // Patrón 1: NIT Colombia (numérico)
+  const nitColombiaMatch = cleanText.match(/[-\s]*NIT:\s*([0-9]+)/i);
+  if (nitColombiaMatch) {
+    return { rfc: nitColombiaMatch[1].trim(), type: 'NIT' };
+  }
+  
+  // Patrón 2: RFC México (alfanumérico) - formato: AAAA######AAA
+  const rfcMexicoMatch = cleanText.match(/[-\s]*(?:RFC|NIT):\s*([A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3})/i);
+  if (rfcMexicoMatch) {
+    return { rfc: rfcMexicoMatch[1].trim().toUpperCase(), type: 'RFC' };
+  }
+  
+  // Patrón 3: Buscar RFC sin etiqueta (formato libre)
+  const rfcPatternMatch = cleanText.match(/([A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3})/i);
+  if (rfcPatternMatch) {
+    return { rfc: rfcPatternMatch[1].trim().toUpperCase(), type: 'RFC' };
+  }
+  
+  // Patrón 4: NIT genérico (números con guiones)
+  const nitGenericoMatch = cleanText.match(/[-\s]*(?:RFC|NIT):\s*([0-9\-]+)/i);
+  if (nitGenericoMatch) {
+    return { rfc: nitGenericoMatch[1].trim(), type: 'NIT' };
+  }
+
+  return { rfc: '', type: 'UNKNOWN' };
+}
+
 interface FKCSVDataViewerProps {
   className?: string;
 }
@@ -414,6 +454,14 @@ function CSVDataTab({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 #
               </th>
+              {/* Columna especial para NIT parseado */}
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div className="flex items-center gap-2">
+                  <span className="text-primary-600 font-semibold">
+                    NIT Parseado
+                  </span>
+                </div>
+              </th>
               {displayedFields.map((field) => (
                 <th
                   key={field}
@@ -429,30 +477,60 @@ function CSVDataTab({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {csvData.slice(0, 20).map((row, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                  <button
-                    onClick={() => onToggleRowExpansion(index)}
-                    className="flex items-center gap-1 hover:text-primary-600"
-                  >
-                    {expandedRows.has(index) ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                    {row._rowNumber || index + 1}
-                  </button>
-                </td>
-                {displayedFields.map((field) => (
-                  <td key={field} className="px-4 py-3 text-sm text-gray-900">
-                    <div className="max-w-48 truncate" title={String(row[field] || '')}>
-                      {String(row[field] || '-')}
+            {csvData.slice(0, 20).map((row, index) => {
+              // Extraer RFC/NIT de la columna "1.Docu. Cliente"
+              const docuCliente = row['1.Docu. Cliente'] || row['1. Docu. Cliente'] || '';
+              const parsedRFC = extractRFCFromText(docuCliente);
+              
+              return (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    <button
+                      onClick={() => onToggleRowExpansion(index)}
+                      className="flex items-center gap-1 hover:text-primary-600"
+                    >
+                      {expandedRows.has(index) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                      {row._rowNumber || index + 1}
+                    </button>
+                  </td>
+                  
+                  {/* Celda especial para NIT parseado */}
+                  <td className="px-4 py-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      {parsedRFC.rfc ? (
+                        <div className="flex flex-col">
+                          <span className={cn(
+                            "font-mono text-xs px-2 py-1 rounded",
+                            parsedRFC.type === 'RFC' 
+                              ? "bg-green-100 text-green-800" 
+                              : "bg-blue-100 text-blue-800"
+                          )}>
+                            {parsedRFC.rfc}
+                          </span>
+                          <span className="text-xs text-gray-500 mt-1">
+                            {parsedRFC.type === 'RFC' ? 'México' : 'Colombia'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400 text-xs">Sin NIT</span>
+                      )}
                     </div>
                   </td>
-                ))}
-              </tr>
-            ))}
+                  
+                  {displayedFields.map((field) => (
+                    <td key={field} className="px-4 py-3 text-sm text-gray-900">
+                      <div className="max-w-48 truncate" title={String(row[field] || '')}>
+                        {String(row[field] || '-')}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
