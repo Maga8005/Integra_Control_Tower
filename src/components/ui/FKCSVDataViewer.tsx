@@ -62,8 +62,19 @@ interface FKCSVDataViewerProps {
 }
 
 export default function FKCSVDataViewer({ className }: FKCSVDataViewerProps) {
-  // Country selection state
-  const [selectedCountry, setSelectedCountry] = useState<'CO' | 'MX'>('CO');
+  // Country selection state with persistence (sincronizado globalmente)
+  const [selectedCountry, setSelectedCountry] = useState<'CO' | 'MX'>(() => {
+    // Recuperar país seleccionado del sessionStorage (clave compartida)
+    const savedCountry = sessionStorage.getItem('integra_selectedCountry');
+    return (savedCountry === 'MX' || savedCountry === 'CO') ? savedCountry : 'CO';
+  });
+  
+  // Persistir país seleccionado cuando cambie (sincronizado globalmente)
+  const handleCountryChange = (newCountry: 'CO' | 'MX') => {
+    setSelectedCountry(newCountry);
+    sessionStorage.setItem('integra_selectedCountry', newCountry);
+    console.log(`🌍 CSV Viewer - País cambiado a: ${newCountry}`);
+  };
   
   const {
     csvData,
@@ -184,8 +195,7 @@ export default function FKCSVDataViewer({ className }: FKCSVDataViewerProps) {
               value={selectedCountry}
               onChange={(e) => {
                 const newCountry = e.target.value as 'CO' | 'MX';
-                setSelectedCountry(newCountry);
-                console.log(`🌍 CSV Viewer - Cambiando a país: ${newCountry}`);
+                handleCountryChange(newCountry);
               }}
               disabled={isLoadingCSV}
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"

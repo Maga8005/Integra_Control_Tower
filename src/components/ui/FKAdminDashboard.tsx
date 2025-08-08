@@ -101,9 +101,21 @@ function getPhaseConfig(phaseName: string) {
 export default function FKAdminDashboard() {
   const navigate = useNavigate();
   
-  // Local state for filters and country selection
-  const [selectedCountry, setSelectedCountry] = useState<'CO' | 'MX'>('CO');
+  // Local state for filters and country selection with persistence (sincronizado globalmente)
+  const [selectedCountry, setSelectedCountry] = useState<'CO' | 'MX'>(() => {
+    // Recuperar país seleccionado del sessionStorage (clave compartida)
+    const savedCountry = sessionStorage.getItem('integra_selectedCountry');
+    return (savedCountry === 'MX' || savedCountry === 'CO') ? savedCountry : 'CO';
+  });
+  
   const { operations, isLoading, error, metadata, refetch } = useAdminDashboardData(selectedCountry);
+  
+  // Persistir país seleccionado cuando cambie (sincronizado globalmente)
+  const handleCountryChange = (newCountry: 'CO' | 'MX') => {
+    setSelectedCountry(newCountry);
+    sessionStorage.setItem('integra_selectedCountry', newCountry);
+    console.log(`🌍 Admin Dashboard - País cambiado a: ${newCountry}`);
+  };
   
   // Local state for filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -369,8 +381,7 @@ export default function FKAdminDashboard() {
                   value={selectedCountry}
                   onChange={(e) => {
                     const newCountry = e.target.value as 'CO' | 'MX';
-                    setSelectedCountry(newCountry);
-                    console.log(`🌍 Cambiando a país: ${newCountry}`);
+                    handleCountryChange(newCountry);
                   }}
                   disabled={isUploading}
                   className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
