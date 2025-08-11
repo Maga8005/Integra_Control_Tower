@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { BackendOperationCard, DashboardResponse } from './useDashboardData';
-import { environment } from '../config/environment';
+import { environment, supabaseHeaders } from '../config/environment';
 import { mockDashboardData } from '../services/mockAuthService';
 
 // Helper functions for data mapping
@@ -106,7 +106,9 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
         return;
       }
 
-      const response = await fetch(`${environment.apiBaseUrl}/api/admin/country-data/${countryCode}?admin=admin-dev-key`);
+      const response = await fetch(`${environment.apiBaseUrl}/admin-dashboard?country=${countryCode}`, {
+        headers: supabaseHeaders
+      });
       
       console.log('👑 [ADMIN] Respuesta HTTP:', response.status, response.statusText);
       
