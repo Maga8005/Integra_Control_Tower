@@ -257,11 +257,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       console.log('🔐 Iniciando login admin con email:', email);
-      console.log('🌍 Usando mock backend:', environment.useMockBackend);
+      console.log('🌍 Environment config:', {
+        useMockBackend: environment.useMockBackend,
+        isDevelopment: environment.isDevelopment,
+        isProduction: environment.isProduction,
+        apiBaseUrl: environment.apiBaseUrl,
+        hostname: window.location.hostname
+      });
       
       let loginData: AdminLoginResponse;
       
-      if (environment.useMockBackend) {
+      // Extra safety check - if we're not on localhost, force mock
+      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      const shouldUseMock = environment.useMockBackend || !isLocalHost;
+      
+      console.log('🎯 Decision: shouldUseMock =', shouldUseMock, '(isLocalHost =', isLocalHost, ')');
+      
+      if (shouldUseMock) {
         // Usar servicio mock en producción
         console.log('📦 Usando mock auth service');
         loginData = await mockAdminLogin(email, password);

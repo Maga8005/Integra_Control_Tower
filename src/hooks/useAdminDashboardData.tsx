@@ -91,19 +91,17 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
         const data = mockDashboardData;
         console.log('👑 [ADMIN] Datos mock:', data);
         
-        setAdminDashboardData(data);
-        
-        const stats = {
-          totalOperations: 0,
-          lastUpdated: new Date().toISOString(),
-          processingStats: {
-            validOperations: 0,
-            errorCount: 0,
-            warningCount: 0
-          }
-        };
-        
-        setProcessingStats(stats);
+        // Usar los datos mock (operaciones vacías por ahora)
+        setOperations(data.operations || []);
+        setMetadata({
+          totalRecords: 0,
+          validRecords: 0,
+          errors: [],
+          warnings: [],
+          processedAt: new Date().toISOString(),
+          source: 'mock'
+        });
+        setError(null);
         setIsLoading(false);
         return;
       }
@@ -170,15 +168,15 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
       setOperations(mappedOperations);
       
       // Create metadata compatible with the expected structure
-      const metadata = {
-        lastUpdated: data.timestamp,
-        processingStats: {
-          validOperations: operations.length,
-          errorCount: validation.errors?.length || 0,
-          warningCount: validation.warnings?.length || 0
-        }
+      const processedMetadata = {
+        totalRecords: mappedOperations.length,
+        validRecords: mappedOperations.length,
+        errors: validation.errors || [],
+        warnings: validation.warnings || [],
+        processedAt: data.timestamp || new Date().toISOString(),
+        source: 'backend'
       };
-      setMetadata(metadata);
+      setMetadata(processedMetadata);
 
     } catch (err) {
       console.error('❌ [ADMIN] Error completo fetching dashboard data:', {

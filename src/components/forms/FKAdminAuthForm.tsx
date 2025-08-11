@@ -208,7 +208,7 @@ export default function FKAdminAuthForm({ onSuccess, onBackToClient, className }
           </h4>
           <div className="text-xs text-orange-600 space-y-1">
             <p><strong>Email:</strong> <code className="bg-orange-100 px-1 rounded">admin@integra.com</code></p>
-            <p><strong>Password:</strong> <code className="bg-orange-100 px-1 rounded">IntegraMVP2025!</code></p>
+            <p><strong>Password:</strong> <code className="bg-orange-100 px-1 rounded">admin123</code></p>
             <p className="text-orange-500 mt-2">⚠️ Solo para desarrollo - no usar en producción</p>
           </div>
         </div>
