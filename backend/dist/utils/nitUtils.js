@@ -14,15 +14,31 @@ const csvMappers_1 = require("./csvMappers");
 /**
  * Normalizar NIT/RFC para búsqueda consistente
  * Elimina espacios, guiones, puntos y convierte a mayúsculas
+ * Soporte para RFC mexicano y NIT colombiano
  */
 function normalizeNit(nit) {
     if (!nit || typeof nit !== 'string') {
         return '';
     }
-    return nit
+    const normalized = nit
         .trim()
         .replace(/[\s\-\.]/g, '') // Remover espacios, guiones y puntos
         .toUpperCase();
+    // Validar si es RFC mexicano válido (formato: AAAA######AAA)
+    const rfcPattern = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/;
+    if (rfcPattern.test(normalized)) {
+        console.log(`📋 RFC mexicano normalizado: ${normalized}`);
+        return normalized;
+    }
+    // Validar si es NIT colombiano (solo números)
+    const nitPattern = /^[0-9]+$/;
+    if (nitPattern.test(normalized)) {
+        console.log(`📋 NIT colombiano normalizado: ${normalized}`);
+        return normalized;
+    }
+    // Retornar normalizado para otros casos
+    console.log(`📋 Identificador normalizado: ${normalized}`);
+    return normalized;
 }
 function extractClienteNitFromDocColumn(docuClienteValue) {
     if (!docuClienteValue || typeof docuClienteValue !== 'string') {
@@ -33,12 +49,45 @@ function extractClienteNitFromDocColumn(docuClienteValue) {
     // Extraer CLIENTE usando patrón específico
     const clienteMatch = cleanText.match(/[-\s]*CLIENTE:\s*(.+?)(?=\n|$)/i);
     const cliente = clienteMatch ? clienteMatch[1].trim() : '';
-    // Extraer NIT usando patrón específico  
-    const nitMatch = cleanText.match(/[-\s]*NIT:\s*([0-9]+)/i);
-    const nit = nitMatch ? nitMatch[1].trim() : '';
+    // Extraer NIT/RFC usando patrones múltiples para soporte México y Colombia
+    let nit = '';
+    // Patrón 1: NIT Colombia (numérico)
+    const nitColombiaMatch = cleanText.match(/[-\s]*NIT:\s*([0-9]+)/i);
+    if (nitColombiaMatch) {
+        nit = nitColombiaMatch[1].trim();
+        console.log(`✅ NIT Colombia extraído: "${nit}"`);
+    }
+    // Patrón 2: RFC México (alfanumérico) - formato: AAAA######AAA
+    if (!nit) {
+        const rfcMexicoMatch = cleanText.match(/[-\s]*(?:RFC|NIT):\s*([A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3})/i);
+        if (rfcMexicoMatch) {
+            nit = rfcMexicoMatch[1].trim().toUpperCase();
+            console.log(`✅ RFC México extraído: "${nit}"`);
+        }
+    }
+    // Patrón 3: Buscar RFC sin etiqueta (formato libre)
+    if (!nit) {
+        const rfcPatternMatch = cleanText.match(/([A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3})/i);
+        if (rfcPatternMatch) {
+            nit = rfcPatternMatch[1].trim().toUpperCase();
+            console.log(`✅ RFC México (patrón libre) extraído: "${nit}"`);
+        }
+    }
+    // Patrón 4: NIT genérico (números con guiones)
+    if (!nit) {
+        const nitGenericoMatch = cleanText.match(/[-\s]*(?:RFC|NIT):\s*([0-9\-]+)/i);
+        if (nitGenericoMatch) {
+            nit = nitGenericoMatch[1].trim();
+            console.log(`✅ NIT genérico extraído: "${nit}"`);
+        }
+    }
+    // NUEVO: Extraer VALOR OPERACIÓN usando patrón específico
+    const valorMatch = cleanText.match(/[-\s]*VALOR OPERACI[ÓO]N:\s*([0-9]+(?:\.[0-9]+)?)/i);
+    const valorOperacion = valorMatch ? parseFloat(valorMatch[1]) : undefined;
     console.log(`✅ Cliente extraído: "${cliente}"`);
-    console.log(`✅ NIT extraído: "${nit}"`);
-    return { cliente, nit };
+    console.log(`✅ NIT/RFC extraído: "${nit}"`);
+    console.log(`✅ Valor operación extraído: ${valorOperacion || 'N/A'}`);
+    return { cliente, nit, valorOperacion };
 }
 /**
  * Extraer y normalizar NIT de la columna "1. Docu. Cliente" (método legacy)
@@ -118,22 +167,39 @@ function generateClientToken(clientInfo) {
 }
 /**
  * Validar formato de NIT/RFC básico
+ * Soporte para RFC mexicano (AAAA######AAA) y NIT colombiano (numérico)
  */
 function validateNitFormat(nit) {
     const normalizedNit = normalizeNit(nit);
     if (!normalizedNit) {
-        return { isValid: false, message: 'NIT/RFC no puede estar vacío' };
+        return { isValid: false, message: 'NIT/RFC no puede estar vacío', type: 'UNKNOWN' };
     }
+    // Validar RFC mexicano (formato: AAAA######AAA)
+    const rfcPattern = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/;
+    if (rfcPattern.test(normalizedNit)) {
+        return { isValid: true, message: 'RFC mexicano válido', type: 'RFC' };
+    }
+    // Validar NIT colombiano (solo números, 8-10 dígitos)
+    const nitPattern = /^[0-9]{8,10}$/;
+    if (nitPattern.test(normalizedNit)) {
+        return { isValid: true, message: 'NIT colombiano válido', type: 'NIT' };
+    }
+    // Validar NIT genérico (números con posible guión verificador)
+    const nitGenericoPattern = /^[0-9]{6,12}$/;
+    if (nitGenericoPattern.test(normalizedNit)) {
+        return { isValid: true, message: 'NIT genérico válido', type: 'NIT' };
+    }
+    // Validaciones básicas de longitud
     if (normalizedNit.length < 6) {
-        return { isValid: false, message: 'NIT/RFC debe tener al menos 6 caracteres' };
+        return { isValid: false, message: 'NIT/RFC debe tener al menos 6 caracteres', type: 'UNKNOWN' };
     }
     if (normalizedNit.length > 15) {
-        return { isValid: false, message: 'NIT/RFC no puede tener más de 15 caracteres' };
+        return { isValid: false, message: 'NIT/RFC no puede tener más de 15 caracteres', type: 'UNKNOWN' };
     }
     // Validar que contenga al menos números o letras
     if (!/[0-9A-Z]/.test(normalizedNit)) {
-        return { isValid: false, message: 'NIT/RFC debe contener números o letras' };
+        return { isValid: false, message: 'NIT/RFC debe contener números o letras', type: 'UNKNOWN' };
     }
-    return { isValid: true, message: 'Formato válido' };
+    return { isValid: true, message: 'Formato válido (identificador genérico)', type: 'UNKNOWN' };
 }
 //# sourceMappingURL=nitUtils.js.map

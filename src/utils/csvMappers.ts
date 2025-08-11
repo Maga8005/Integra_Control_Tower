@@ -3,7 +3,34 @@
  * Integra Control Tower MVP
  */
 
-import { Operation, ProcessStage, ApplicationStatus } from '../types/Operation';
+import { OperationDetail, EstadoProceso } from '../types/Operation';
+
+// Create interfaces for legacy Operation compatibility
+interface Operation {
+  id: string;
+  applicantId: string;
+  status: ApplicationStatus;
+  currentStage: ProcessStage;
+  progress: number;
+  cliente: string;
+  valorTotal: number;
+  moneda: string;
+  ruta: string;
+  assignedTo: string;
+  currentStep: number;
+  stepName: string;
+  createdAt: Date;
+  updatedAt: Date;
+  estimatedCompletion: Date;
+  csvData: {
+    proceso: string;
+    infoGeneral: string;
+    equipoComercial: string;
+  };
+}
+
+type ProcessStage = 'application' | 'documentation' | 'review' | 'approval' | 'funding' | 'monitoring' | 'completion';
+type ApplicationStatus = 'draft' | 'submitted' | 'under_review' | 'approved' | 'rejected' | 'funded' | 'completed';
 
 // Interfaces para mapeo de datos CSV
 export interface ParsedGeneralInfo {

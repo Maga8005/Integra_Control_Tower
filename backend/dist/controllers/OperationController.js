@@ -5,31 +5,60 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.OperationController = void 0;
+const tslib_1 = require("tslib");
 const CSVProcessor_1 = require("../services/CSVProcessor");
+const fs_1 = tslib_1.__importDefault(require("fs"));
+const path_1 = tslib_1.__importDefault(require("path"));
 // Removed: import { mapMultipleCSVToCards, validateCSVRow } from '../utils/csvMappers';
 // Cache simple en memoria para las operaciones
 let operationsCache = null;
 let lastCacheUpdate = null;
-const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos
+const CACHE_DURATION_MS = 30 * 1000; // 30 segundos
 class OperationController {
     /**
      * GET /api/operations - Obtiene todas las operaciones del CSV
+     * ACTUALIZADO: Usa la misma data que el admin dashboard para consistencia
      */
     static async getAllOperations(req, res) {
         try {
-            console.log('📊 GET /api/operations - Solicitando todas las operaciones');
-            // Verificar cache
-            const operations = await OperationController.getOperationsFromCache();
-            if (!operations) {
+            console.log('📊 GET /api/operations - Solicitando todas las operaciones (MODO UNIFICADO)');
+            // Usar la misma lógica que el admin dashboard para consistencia
+            const countries = ['CO', 'MX'];
+            let allOperations = [];
+            for (const country of countries) {
+                try {
+                    const countryFileName = `integra_${country.toLowerCase()}_data.csv`;
+                    const countryFilePath = path_1.default.join(__dirname, `../../src/data/${countryFileName}`);
+                    // Check if country file exists
+                    if (!fs_1.default.existsSync(countryFilePath)) {
+                        console.log(`⚠️ Archivo de ${country} no encontrado: ${countryFileName}`);
+                        continue;
+                    }
+                    // Process country CSV using the same method as AdminController
+                    const result = await CSVProcessor_1.CSVProcessor.processCSVFile(countryFilePath);
+                    if (result.success && result.data && result.data.length > 0) {
+                        console.log(`📊 ${country}: ${result.data.length} operaciones cargadas`);
+                        allOperations.push(...result.data);
+                    }
+                    else {
+                        console.log(`⚠️ Error procesando ${country}:`, result.errors);
+                    }
+                }
+                catch (error) {
+                    console.error(`⚠️ Error cargando ${country}:`, error);
+                }
+            }
+            console.log(`✅ Total operaciones cargadas: ${allOperations.length}`);
+            if (allOperations.length === 0) {
                 res.status(500).json({
                     success: false,
-                    message: 'Error procesando archivo CSV',
+                    message: 'No se encontraron operaciones en ningún país',
                     timestamp: new Date().toISOString()
                 });
                 return;
             }
             // Aplicar filtros si se proporcionan
-            const filteredOperations = OperationController.applyFilters(operations, req.query);
+            const filteredOperations = OperationController.applyFilters(allOperations, req.query);
             // Aplicar paginación
             const page = parseInt(req.query.page) || 1;
             const limit = parseInt(req.query.limit) || 20;
@@ -62,40 +91,77 @@ class OperationController {
     }
     /**
      * GET /api/operations/:id - Obtiene una operación específica por ID
+     * Usa EXACTAMENTE la misma data que el admin dashboard para consistencia
      */
     static async getOperationById(req, res) {
         try {
             const { id } = req.params;
             console.log(`🔍 GET /api/operations/${id} - Buscando operación específica`);
-            const operations = await OperationController.getOperationsFromCache();
-            if (!operations) {
-                res.status(500).json({
-                    success: false,
-                    message: 'Error procesando archivo CSV',
-                    timestamp: new Date().toISOString()
-                });
-                return;
+            // Import AdminController to use the same data processing
+            const { AdminController } = await Promise.resolve().then(() => tslib_1.__importStar(require('./AdminController')));
+            const countries = ['CO', 'MX'];
+            let foundOperation = null;
+            let foundCountry = null;
+            // Use the EXACT same logic as AdminController.getCountryData
+            for (const country of countries) {
+                try {
+                    const countryName = country === 'CO' ? 'Colombia' : 'México';
+                    const countryFileName = `integra_${country.toLowerCase()}_data.csv`;
+                    const countryFilePath = path_1.default.join(__dirname, `../../src/data/${countryFileName}`);
+                    console.log(`🌍 Buscando operación ${id} en ${countryName}...`);
+                    // Check if country file exists
+                    if (!fs_1.default.existsSync(countryFilePath)) {
+                        console.log(`⚠️ Archivo de ${countryName} no encontrado`);
+                        continue;
+                    }
+                    // Use the EXACT same processing as AdminController.getCountryData
+                    const processingResult = await CSVProcessor_1.CSVProcessor.processCSVFile(countryFilePath);
+                    if (processingResult.success && processingResult.data && processingResult.data.length > 0) {
+                        console.log(`📊 ${countryName}: ${processingResult.data.length} operaciones procesadas`);
+                        // Search for the operation
+                        const operation = processingResult.data.find((op) => op.id === id);
+                        if (operation) {
+                            foundOperation = operation;
+                            foundCountry = country;
+                            console.log(`✅ Operación ${id} encontrada en ${countryName}: ${operation.clienteCompleto}`);
+                            break;
+                        }
+                        else {
+                            // Log available IDs for debugging (first 5)
+                            const availableIds = processingResult.data.slice(0, 5).map((op) => op.id);
+                            console.log(`❌ Operación ${id} NO encontrada en ${countryName}`);
+                            console.log(`   IDs disponibles (primeros 5): ${availableIds.join(', ')}`);
+                        }
+                    }
+                    else {
+                        console.log(`⚠️ Error procesando datos de ${countryName}:`, processingResult.errors);
+                    }
+                }
+                catch (error) {
+                    console.error(`⚠️ Error procesando ${country}:`, error);
+                    continue;
+                }
             }
-            const operation = operations.find(op => op.id === id);
-            if (!operation) {
-                console.log(`❌ Operación ${id} no encontrada`);
+            if (!foundOperation) {
+                console.log(`❌ Operación ${id} NO ENCONTRADA en ningún país`);
                 res.status(404).json({
                     success: false,
                     message: `Operación con ID ${id} no encontrada`,
+                    errors: [`Operación ${id} no existe en los datos de Colombia ni México`],
                     timestamp: new Date().toISOString()
                 });
                 return;
             }
-            console.log(`✅ Operación encontrada: ${operation.clienteCompleto}`);
+            console.log(`✅ OPERACIÓN ENCONTRADA: ${foundOperation.clienteCompleto} (${foundCountry})`);
             res.status(200).json({
                 success: true,
-                data: operation,
+                data: foundOperation,
                 message: 'Operación obtenida exitosamente',
                 timestamp: new Date().toISOString()
             });
         }
         catch (error) {
-            console.error('❌ Error en getOperationById:', error);
+            console.error('❌ ERROR CRÍTICO en getOperationById:', error);
             res.status(500).json({
                 success: false,
                 message: 'Error interno del servidor',
@@ -212,26 +278,80 @@ class OperationController {
                 return;
             }
             console.log(`📊 Convirtiendo ${operations.length} operaciones procesadas para dashboard...`);
-            // Convertir OperationDetail[] a BackendOperationCard[] para el dashboard
-            const operationCards = operations.map(operation => ({
-                id: operation.id,
-                clientName: operation.clienteCompleto,
-                clientNit: operation.clienteNit, // NUEVO: Usar el NIT ya extraído
-                providerName: operation.proveedorBeneficiario,
-                totalValue: `$${operation.valorTotal.toLocaleString()} ${operation.moneda}`,
-                totalValueNumeric: operation.valorTotal,
-                route: operation.rutaComercial,
-                assignedPerson: operation.personaAsignada,
-                progress: Math.round(operation.progresoGeneral),
-                status: operation.progresoGeneral === 100 ? 'completed' :
-                    operation.progresoGeneral > 0 ? 'in-progress' : 'draft',
-                createdAt: operation.fechaCreacion,
-                updatedAt: operation.ultimaActualizacion
-            }));
-            // Filtrar operaciones válidas (todas deberían ser válidas al venir del cache procesado)
-            const cleanCards = operationCards.filter(card => card.clientName &&
-                card.clientName !== 'Cliente no especificado' &&
-                !card.route.includes('no especificad'));
+            // Convertir OperationDetail[] a BackendOperationCard[] para el dashboard con manejo de errores
+            const operationCards = [];
+            operations.forEach((operation, index) => {
+                try {
+                    console.log(`📋 Mapeando operación ${index + 1}/${operations.length}: ${operation.id}`);
+                    // Convertir timeline de backend a formato frontend
+                    let timeline = undefined;
+                    let currentPhaseName = undefined;
+                    if (operation.timeline && operation.timeline.length > 0) {
+                        const states = operation.timeline.map((event, idx) => ({
+                            id: idx + 1, // Frontend usa números para id
+                            name: event.fase || event.descripcion || `Fase ${idx + 1}`,
+                            status: event.estado === 'completado' ? 'completed' :
+                                event.estado === 'en_proceso' ? 'in-progress' :
+                                    event.estado === 'bloqueado' ? 'blocked' : 'pending',
+                            progress: event.progreso || 0,
+                            description: event.descripcion || '',
+                            completedAt: event.estado === 'completado' ? event.fecha : undefined,
+                            notes: event.notas || ''
+                        }));
+                        // Encontrar fase actual (última completada o primera en progreso)
+                        let currentStateIndex = 0;
+                        for (let i = states.length - 1; i >= 0; i--) {
+                            if (states[i].status === 'completed' || states[i].status === 'in-progress') {
+                                currentStateIndex = i;
+                                currentPhaseName = states[i].name;
+                                break;
+                            }
+                        }
+                        timeline = {
+                            states,
+                            currentState: currentStateIndex,
+                            overallProgress: Math.round(operation.progresoGeneral || 0)
+                        };
+                    }
+                    const card = {
+                        id: operation.id,
+                        clientName: operation.clienteCompleto || 'Cliente no especificado',
+                        clientNit: operation.clienteNit || '', // NUEVO: Usar el NIT ya extraído
+                        providerName: operation.proveedorBeneficiario || 'Proveedor no especificado',
+                        totalValue: `$${(operation.valorTotal || 0).toLocaleString()} ${operation.moneda || 'USD'}`, // Valor compra mercancía
+                        totalValueNumeric: operation.valorTotal || 0,
+                        operationValue: operation.valorOperacion ? `$${operation.valorOperacion.toLocaleString()} ${operation.moneda || 'USD'}` : undefined, // NUEVO: Valor operación
+                        operationValueNumeric: operation.valorOperacion, // NUEVO: Valor operación numérico
+                        route: operation.rutaComercial || 'Ruta no especificada',
+                        assignedPerson: operation.personaAsignada || 'No asignado',
+                        progress: Math.round(operation.progresoGeneral || 0),
+                        status: (operation.progresoGeneral || 0) === 100 ? 'completed' :
+                            (operation.progresoGeneral || 0) > 0 ? 'in-progress' : 'draft',
+                        currentPhaseName, // NUEVO: Nombre de la fase actual
+                        timeline, // NUEVO: Timeline convertido al formato frontend
+                        createdAt: operation.fechaCreacion || new Date().toISOString(),
+                        updatedAt: operation.ultimaActualizacion || new Date().toISOString()
+                    };
+                    operationCards.push(card);
+                    console.log(`✅ Operación ${index + 1} mapeada exitosamente: ${card.clientName}`);
+                }
+                catch (error) {
+                    console.error(`❌ Error mapeando operación ${index + 1}:`, error);
+                    console.error(`   ID: ${operation?.id}`);
+                    console.error(`   Cliente: ${operation?.clienteCompleto}`);
+                }
+            });
+            // DEBUG: Log all operations to see what's being filtered out
+            console.log(`📋 Todas las operaciones antes del filtrado:`);
+            operationCards.forEach((card, index) => {
+                console.log(`  ${index + 1}. ID: ${card.id}`);
+                console.log(`     Cliente: "${card.clientName}"`);
+                console.log(`     NIT: "${card.clientNit}"`);
+                console.log(`     Ruta: "${card.route}"`);
+                console.log(`     ---`);
+            });
+            // TEMPORARILY: No filtering to see all operations
+            const cleanCards = operationCards;
             console.log(`🔍 Filtrado: ${cleanCards.length}/${operationCards.length} operaciones válidas para dashboard`);
             // Aplicar filtros adicionales si se proporcionan
             let filteredCards = [...cleanCards];

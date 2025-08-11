@@ -1,9 +1,10 @@
 /**
  * Procesador CSV para leer archivo real de operaciones Integra
  * Maneja las 19 filas reales con mapeo exacto de estados
- * Integra Control Tower MVP
+ * Integra Control Tower MVP - Soporte multi-país (Colombia y México)
  */
 import { OperationDetail } from '../types/Operation';
+import { CountryCode } from '../utils/csvMappers';
 export interface CSVRow {
     [key: string]: string;
 }
@@ -11,6 +12,8 @@ export interface ProcessingResult {
     success: boolean;
     data?: OperationDetail[];
     rawData?: CSVRow[];
+    countryCode?: CountryCode;
+    countryName?: string;
     errors: string[];
     warnings: string[];
     totalProcessed: number;
@@ -23,12 +26,14 @@ export declare class CSVProcessor {
     private static readonly REQUIRED_COLUMNS;
     /**
      * Procesa el archivo CSV completo y convierte a OperationDetail[]
+     * ACTUALIZADO: Detecta automáticamente el país (Colombia o México)
      */
-    static processCSVFile(): Promise<ProcessingResult>;
+    static processCSVFile(csvPath?: string): Promise<ProcessingResult>;
     /**
      * Procesa una fila individual del CSV
+     * ACTUALIZADO: Incluye soporte para configuración por país
      */
-    static processCSVRow(row: CSVRow, rowNumber: number): OperationDetail | null;
+    static processCSVRow(row: CSVRow, rowNumber: number, countryCode?: CountryCode): OperationDetail | null;
     /**
      * Parsea el contenido CSV crudo
      */
@@ -46,7 +51,12 @@ export declare class CSVProcessor {
      */
     private static validateRequiredColumns;
     /**
-     * Genera ID único para la operación
+     * Validación flexible de columnas que maneja variaciones en nombres
+     */
+    private static validateRequiredColumnsFlexible;
+    /**
+     * Genera ID único para la operación (DETERMINÍSTICO)
+     * Usa el valor único de la columna "Nombre" para garantizar consistencia
      */
     private static generateOperationId;
     /**
@@ -102,5 +112,9 @@ export declare class CSVProcessor {
      * Extrae valor monetario de un texto cuando el parser principal falla
      */
     private static extractValueFromText;
+    /**
+     * Formatea Incoterms para mostrar correctamente en el frontend
+     */
+    private static formatIncoterms;
 }
 //# sourceMappingURL=CSVProcessor.d.ts.map

@@ -1,11 +1,12 @@
 /**
  * Mapeo exacto de estados CSV a timeline de 5 fases
  * Lógica crítica para determinar estados basado en campos específicos del CSV
- * Integra Control Tower MVP
+ * Integra Control Tower MVP - Soporte multi-país (Colombia y México)
  */
 import { EstadoProceso, EstadosProceso } from '../types/Operation';
 import { CSVRow } from './CSVProcessor';
 import { ParsedOperationInfo } from './OperationInfoParser';
+import { CountryCode } from '../utils/csvMappers';
 export interface StateAnalysis {
     estados: EstadosProceso;
     analysis: {
@@ -18,12 +19,14 @@ export interface StateAnalysis {
 }
 /**
  * Mapea estados CSV a los 6 estados principales del sistema
+ * ACTUALIZADO: Soporte multi-país
  */
-export declare function mapEstados(csvRow: CSVRow): EstadosProceso;
+export declare function mapEstados(csvRow: CSVRow, countryCode?: CountryCode): EstadosProceso;
 /**
  * Análisis detallado de estados con explicaciones
+ * ACTUALIZADO: Soporte multi-país
  */
-export declare function analyzeStates(csvRow: CSVRow, parsedInfo: ParsedOperationInfo): StateAnalysis;
+export declare function analyzeStates(csvRow: CSVRow, parsedInfo: ParsedOperationInfo, countryCode?: CountryCode): StateAnalysis;
 /**
  * Calcula el progreso de giros/pagos basado en los datos parseados
  */

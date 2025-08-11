@@ -2,7 +2,7 @@
 /**
  * Mapeo exacto de estados CSV a timeline de 5 fases
  * Lógica crítica para determinar estados basado en campos específicos del CSV
- * Integra Control Tower MVP
+ * Integra Control Tower MVP - Soporte multi-país (Colombia y México)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapEstados = mapEstados;
@@ -10,30 +10,34 @@ exports.analyzeStates = analyzeStates;
 exports.calculatePaymentProgress = calculatePaymentProgress;
 exports.validateLiberations = validateLiberations;
 const Operation_1 = require("../types/Operation");
+const csvMappers_1 = require("../utils/csvMappers");
 /**
  * Mapea estados CSV a los 6 estados principales del sistema
+ * ACTUALIZADO: Soporte multi-país
  */
-function mapEstados(csvRow) {
-    console.log('🔄 Mapeando estados desde CSV...');
+function mapEstados(csvRow, countryCode = 'CO') {
+    const config = csvMappers_1.COUNTRY_CONFIGS[countryCode];
+    console.log(`🔄 Mapeando estados desde CSV (${config.name})...`);
     const estados = {
-        cotizacion: mapCotizacionState(csvRow),
-        documentosLegales: mapDocumentosLegalesState(csvRow),
-        cuotaOperacional: mapCuotaOperacionalState(csvRow),
-        compraInternacional: mapCompraInternacionalState(csvRow),
-        giroProveedor: mapGiroProveedorState(csvRow),
-        facturaFinal: mapFacturaFinalState(csvRow)
+        cotizacion: mapCotizacionState(csvRow, countryCode),
+        documentosLegales: mapDocumentosLegalesState(csvRow, countryCode),
+        cuotaOperacional: mapCuotaOperacionalState(csvRow, countryCode),
+        compraInternacional: mapCompraInternacionalState(csvRow, countryCode),
+        giroProveedor: mapGiroProveedorState(csvRow, countryCode),
+        facturaFinal: mapFacturaFinalState(csvRow, countryCode)
     };
     console.log('✅ Estados mapeados:', estados);
     return estados;
 }
 /**
  * Análisis detallado de estados con explicaciones
+ * ACTUALIZADO: Soporte multi-país
  */
-function analyzeStates(csvRow, parsedInfo) {
+function analyzeStates(csvRow, parsedInfo, countryCode = 'CO') {
     console.log('🔍 Iniciando análisis detallado de estados...');
     const analysis = {};
     // 1. Análisis de Cotización
-    const cotizacionState = mapCotizacionState(csvRow);
+    const cotizacionState = mapCotizacionState(csvRow, countryCode);
     analysis.cotizacion = {
         condition: 'Proceso === "1. Aprobación de Cotización" OR "1. ESTADO Firma Cotización" === "Listo"',
         result: cotizacionState,
@@ -89,7 +93,7 @@ function analyzeStates(csvRow, parsedInfo) {
 /**
  * 1. COTIZACIÓN - Condición: Proceso = "1. Aprobación de Cotización" OR Campo "1. ESTADO Firma Cotización" = "Listo"
  */
-function mapCotizacionState(csvRow) {
+function mapCotizacionState(csvRow, countryCode = 'CO') {
     const proceso = csvRow['Proceso'] || '';
     const estadoFirma = csvRow['1. ESTADO Firma Cotización'] || '';
     console.log(`🔍 Cotización - Proceso: "${proceso}", Estado Firma: "${estadoFirma}"`);
@@ -114,12 +118,31 @@ function mapCotizacionState(csvRow) {
 /**
  * 2. DOCUMENTOS LEGALES - Estado derivado basado en progreso general
  */
-function mapDocumentosLegalesState(csvRow) {
+function mapDocumentosLegalesState(csvRow, countryCode = 'CO') {
     // Los documentos legales siguen a la cotización
-    const cotizacionState = mapCotizacionState(csvRow);
-    const cuotaState = mapCuotaOperacionalState(csvRow);
-    console.log(`🔍 Documentos - Cotización: ${cotizacionState}, Cuota: ${cuotaState}`);
-    if (cotizacionState === Operation_1.EstadoProceso.COMPLETADO && cuotaState === Operation_1.EstadoProceso.COMPLETADO) {
+    const config = csvMappers_1.COUNTRY_CONFIGS[countryCode];
+    const cotizacionState = mapCotizacionState(csvRow, countryCode);
+    const cuotaState = mapCuotaOperacionalState(csvRow, countryCode);
+    // Para Colombia: verificar también "8. ESTADO Doc Legal X Comp"
+    let docLegalXCompState = Operation_1.EstadoProceso.COMPLETADO; // Por defecto para México
+    if (config.hasDocLegalXComp) {
+        const docLegalEstado = csvRow['8. ESTADO Doc Legal X Comp'] || '';
+        const docLegalLower = docLegalEstado.toLowerCase().trim();
+        if (docLegalLower.includes('listo') || docLegalLower.includes('completado')) {
+            docLegalXCompState = Operation_1.EstadoProceso.COMPLETADO;
+        }
+        else if (docLegalEstado.trim()) {
+            docLegalXCompState = Operation_1.EstadoProceso.EN_PROCESO;
+        }
+        else {
+            docLegalXCompState = Operation_1.EstadoProceso.PENDIENTE;
+        }
+    }
+    console.log(`🔍 Documentos (${config.name}) - Cotización: ${cotizacionState}, Cuota: ${cuotaState}${config.hasDocLegalXComp ? `, Doc Legal X Comp: ${docLegalXCompState}` : ''}`);
+    // Todos los componentes deben estar completados
+    if (cotizacionState === Operation_1.EstadoProceso.COMPLETADO &&
+        cuotaState === Operation_1.EstadoProceso.COMPLETADO &&
+        docLegalXCompState === Operation_1.EstadoProceso.COMPLETADO) {
         console.log('✅ Documentos COMPLETADOS');
         return Operation_1.EstadoProceso.COMPLETADO;
     }
@@ -133,7 +156,7 @@ function mapDocumentosLegalesState(csvRow) {
 /**
  * 3. CUOTA OPERACIONAL - Condición: "4. ESTADO pago Cuota Operacional" === "Listo"
  */
-function mapCuotaOperacionalState(csvRow) {
+function mapCuotaOperacionalState(csvRow, countryCode = 'CO') {
     const estadoCuota = csvRow['4. ESTADO pago Cuota Operacional'] || '';
     console.log(`🔍 Cuota Operacional - Estado: "${estadoCuota}"`);
     if (estadoCuota.toLowerCase().includes('listo')) {
@@ -153,7 +176,7 @@ function mapCuotaOperacionalState(csvRow) {
 /**
  * 4. COMPRA INTERNACIONAL - Lógica compleja basada en progreso de pagos
  */
-function mapCompraInternacionalState(csvRow) {
+function mapCompraInternacionalState(csvRow, countryCode = 'CO') {
     const cuotaState = mapCuotaOperacionalState(csvRow);
     const giroState = mapGiroProveedorState(csvRow);
     console.log(`🔍 Compra Internacional - Cuota: ${cuotaState}, Giro: ${giroState}`);
@@ -174,7 +197,7 @@ function mapCompraInternacionalState(csvRow) {
 /**
  * 5. GIRO PROVEEDOR - Condición: "10. ESTADO Giro Proveedor" === "Listo - Pago Confirmado"
  */
-function mapGiroProveedorState(csvRow) {
+function mapGiroProveedorState(csvRow, countryCode = 'CO') {
     const estadoGiro = csvRow['10. ESTADO Giro Proveedor'] || '';
     console.log(`🔍 Giro Proveedor - Estado: "${estadoGiro}"`);
     // Condición exacta: "Listo - Pago Confirmado"
@@ -197,7 +220,7 @@ function mapGiroProveedorState(csvRow) {
 /**
  * 6. FACTURA FINAL - Condición: "9. ESTADO Proforma / Factura final" === "Listo - Factura Final"
  */
-function mapFacturaFinalState(csvRow) {
+function mapFacturaFinalState(csvRow, countryCode = 'CO') {
     const estadoFactura = csvRow['9. ESTADO Proforma / Factura final'] || '';
     console.log(`🔍 Factura Final - Estado: "${estadoFactura}"`);
     // Condición exacta: "Listo - Factura Final"

@@ -18,15 +18,17 @@ export interface ClientLoginResult {
 /**
  * Normalizar NIT/RFC para búsqueda consistente
  * Elimina espacios, guiones, puntos y convierte a mayúsculas
+ * Soporte para RFC mexicano y NIT colombiano
  */
 export declare function normalizeNit(nit: string): string;
 /**
- * Extraer cliente y NIT desde la columna "1.Docu. Cliente"
- * Formato esperado: "- CLIENTE: [Nombre]\n-NIT:[NIT]"
+ * Extraer cliente, NIT y valor operación desde la columna "1.Docu. Cliente"
+ * Formato esperado: "- CLIENTE: [Nombre]\n- NIT: [NIT]\n- VALOR OPERACIÓN: [Valor]"
  */
 export interface ClienteNitInfo {
     cliente: string;
     nit: string;
+    valorOperacion?: number;
 }
 export declare function extractClienteNitFromDocColumn(docuClienteValue: string): ClienteNitInfo;
 /**
@@ -46,9 +48,11 @@ export declare function findOperationsByNit(csvData: CSVRowData[], searchNit: st
 export declare function generateClientToken(clientInfo: ClientInfo): string;
 /**
  * Validar formato de NIT/RFC básico
+ * Soporte para RFC mexicano (AAAA######AAA) y NIT colombiano (numérico)
  */
 export declare function validateNitFormat(nit: string): {
     isValid: boolean;
     message: string;
+    type: 'RFC' | 'NIT' | 'UNKNOWN';
 };
 //# sourceMappingURL=nitUtils.d.ts.map

@@ -17,11 +17,11 @@ export interface ParsingResult {
 /**
  * Función principal que parsea todo el texto de la operación
  */
-export declare function parseOperationInfo(text: string): ParsedOperationInfo;
+export declare function parseOperationInfo(text: string, csvRow?: any): ParsedOperationInfo;
 /**
  * Extrae información de giros del texto
  */
-export declare function extractGiros(text: string): GiroInfo[];
+export declare function extractGiros(text: string, csvRow?: any): GiroInfo[];
 /**
  * Extrae información de liberaciones del texto
  */

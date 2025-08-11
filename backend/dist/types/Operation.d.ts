@@ -103,6 +103,7 @@ export interface OperationDetail {
     proveedorBeneficiario: string;
     paisProveedor: string;
     valorTotal: number;
+    valorOperacion?: number;
     moneda: Currency;
     progresoGeneral: number;
     personaAsignada: string;
