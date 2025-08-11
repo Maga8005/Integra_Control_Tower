@@ -5,8 +5,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { BackendOperationCard, DashboardResponse } from './useDashboardData';
-
-const BACKEND_URL = 'http://localhost:3001';
+import { environment } from '../config/environment';
+import { mockDashboardData } from '../services/mockAuthService';
 
 // Helper functions for data mapping
 function formatCurrency(amount: number, currency: string = 'USD'): string {
@@ -81,10 +81,34 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
     try {
       const countryName = countryCode === 'CO' ? 'Colombia' : 'México';
       console.log(`👑 [ADMIN] Iniciando fetch de operaciones de ${countryName}...`);
+      console.log('🌍 Usando mock backend:', environment.useMockBackend);
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`${BACKEND_URL}/api/admin/country-data/${countryCode}?admin=admin-dev-key`);
+      if (environment.useMockBackend) {
+        // Usar datos mock en producción
+        console.log('📦 Usando mock dashboard data');
+        const data = mockDashboardData;
+        console.log('👑 [ADMIN] Datos mock:', data);
+        
+        setAdminDashboardData(data);
+        
+        const stats = {
+          totalOperations: 0,
+          lastUpdated: new Date().toISOString(),
+          processingStats: {
+            validOperations: 0,
+            errorCount: 0,
+            warningCount: 0
+          }
+        };
+        
+        setProcessingStats(stats);
+        setIsLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${environment.apiBaseUrl}/api/admin/country-data/${countryCode}?admin=admin-dev-key`);
       
       console.log('👑 [ADMIN] Respuesta HTTP:', response.status, response.statusText);
       
