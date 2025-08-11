@@ -5,8 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-
-const BACKEND_URL = 'http://localhost:3001';
+import { environment, supabaseHeaders } from '../config/environment';
 
 // Interface que coincide exactamente con la estructura del backend
 export interface BackendOperationDetail {
@@ -121,11 +120,13 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
       setIsLoading(true);
       setError(null);
 
-      // Use the dedicated operation endpoint
-      const url = `${BACKEND_URL}/api/operations/${operationId}`;
+      // Use the Supabase Edge Function for operation detail
+      const url = `${environment.apiBaseUrl}/operation-detail?id=${operationId}`;
       console.log(`📞 Llamando a: ${url}`);
       
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: supabaseHeaders
+      });
       console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
       
       if (!response.ok) {
@@ -166,7 +167,7 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
     } catch (err) {
       console.error('❌ Error obteniendo detalles de operación:', {
         operationId,
-        endpoint: `${BACKEND_URL}/api/operations/${operationId}`,
+        endpoint: `${environment.apiBaseUrl}/operation-detail?id=${operationId}`,
         error: err,
         message: err instanceof Error ? err.message : 'Error desconocido',
         stack: err instanceof Error ? err.stack : undefined

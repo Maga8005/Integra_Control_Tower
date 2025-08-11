@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { environment, supabaseHeaders } from '../config/environment';
 
 // Interfaces para datos CSV
 export interface CSVDataResponse {
@@ -80,8 +81,7 @@ export interface UseCSVDataResult {
   lastUpdated: string | null;
 }
 
-const API_BASE_URL = 'http://localhost:3001';
-const ADMIN_KEY = 'admin-dev-key';
+// Use Supabase configuration
 
 export function useCSVData(countryCode: 'CO' | 'MX' = 'CO'): UseCSVDataResult {
   // State for raw CSV data
@@ -101,14 +101,13 @@ export function useCSVData(countryCode: 'CO' | 'MX' = 'CO'): UseCSVDataResult {
   const [csvError, setCsvError] = useState<string | null>(null);
   const [operationsError, setOperationsError] = useState<string | null>(null);
 
-  // Helper function to make API requests
+  // Helper function to make API requests to Supabase
   const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-    const url = `${API_BASE_URL}${endpoint}`;
+    const url = `${environment.apiBaseUrl}${endpoint}`;
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
-        'x-admin-key': ADMIN_KEY,
+        ...supabaseHeaders,
         ...options.headers,
       },
     });
@@ -129,8 +128,8 @@ export function useCSVData(countryCode: 'CO' | 'MX' = 'CO'): UseCSVDataResult {
       const countryName = countryCode === 'CO' ? 'Colombia' : 'México';
       console.log(`🔄 Fetching CSV data from backend for ${countryName}...`);
       
-      // Get country data (includes operations and metadata)
-      const countryResponse = await apiRequest(`/api/admin/country-data/${countryCode}`);
+      // Get admin dashboard data (includes operations and metadata)
+      const countryResponse = await apiRequest(`/admin-dashboard?country=${countryCode}`);
       
       if (countryResponse.success) {
         const operations = countryResponse.data?.operations || [];
@@ -169,25 +168,27 @@ export function useCSVData(countryCode: 'CO' | 'MX' = 'CO'): UseCSVDataResult {
     }
   }, [countryCode]);
 
-  // Fetch processed operations
+  // Fetch processed operations (same as CSV data from Supabase)
   const fetchProcessedOperations = useCallback(async () => {
     setIsLoadingOperations(true);
     setOperationsError(null);
     
     try {
-      console.log('🔄 Fetching processed operations from backend...');
+      console.log('🔄 Fetching processed operations from Supabase...');
       
-      const response: ProcessedOperationsResponse = await apiRequest('/api/operations');
+      // Use the admin dashboard endpoint for consistency
+      const response = await apiRequest(`/admin-dashboard?country=${countryCode}`);
       
       if (response.success) {
-        setProcessedOperations(response.data.data);
+        const operations = response.data?.operations || [];
+        setProcessedOperations(operations);
         setOperationsMetadata({
-          total: response.data.total,
-          page: response.data.page,
-          limit: response.data.limit,
-          totalPages: response.data.totalPages
+          total: operations.length,
+          page: 1,
+          limit: operations.length,
+          totalPages: 1
         });
-        console.log(`✅ Processed operations loaded: ${response.data.data.length} operations`);
+        console.log(`✅ Processed operations loaded: ${operations.length} operations`);
       } else {
         throw new Error(response.message || 'Failed to fetch processed operations');
       }
@@ -199,13 +200,12 @@ export function useCSVData(countryCode: 'CO' | 'MX' = 'CO'): UseCSVDataResult {
     } finally {
       setIsLoadingOperations(false);
     }
-  }, []);
+  }, [countryCode]);
 
-  // Refresh functions
+  // Refresh functions for Supabase
   const refreshCSVData = useCallback(async () => {
     try {
-      console.log('🔄 Refreshing CSV cache...');
-      await apiRequest('/api/admin/csv-refresh', { method: 'POST' });
+      console.log('🔄 Refreshing data from Supabase...');
       await fetchCSVData();
     } catch (error) {
       console.error('❌ Error refreshing CSV data:', error);
@@ -215,8 +215,7 @@ export function useCSVData(countryCode: 'CO' | 'MX' = 'CO'): UseCSVDataResult {
 
   const refreshOperations = useCallback(async () => {
     try {
-      console.log('🔄 Refreshing operations...');
-      await apiRequest('/api/operations/reload', { method: 'POST' });
+      console.log('🔄 Refreshing operations from Supabase...');
       await fetchProcessedOperations();
     } catch (error) {
       console.error('❌ Error refreshing operations:', error);

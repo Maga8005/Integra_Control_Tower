@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
+import { environment, supabaseHeaders } from '../config/environment';
 
 // Timeline interfaces
 export interface TimelineState {
@@ -78,7 +79,7 @@ export interface UseDashboardDataReturn {
   refetch: () => void;
 }
 
-const BACKEND_URL = 'http://localhost:3001';
+// Use Supabase configuration
 
 // Función para mapear estructura del backend a frontend
 function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
@@ -228,11 +229,14 @@ export function useDashboardData(): UseDashboardDataReturn {
 
   const fetchDashboardData = async () => {
     try {
-      console.log('🔄 Iniciando fetch de datos del dashboard...');
+      console.log('🔄 Iniciando fetch de datos del dashboard desde Supabase...');
       setIsLoading(true);
       setError(null);
 
-      const response = await fetch(`${BACKEND_URL}/api/operations/dashboard`);
+      // Default to Colombia for regular dashboard data
+      const response = await fetch(`${environment.apiBaseUrl}/admin-dashboard?country=CO`, {
+        headers: supabaseHeaders
+      });
       
       console.log('🌐 Respuesta HTTP:', response.status, response.statusText);
       
@@ -242,61 +246,76 @@ export function useDashboardData(): UseDashboardDataReturn {
         throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
 
-      const data: DashboardResponse = await response.json();
+      const data = await response.json();
       
-      console.log('📄 Datos recibidos:', {
+      console.log('📄 Datos recibidos de Supabase:', {
         success: data.success,
-        operaciones: data.data?.length || 0,
-        errores: data.errors?.length || 0,
+        operaciones: data.data?.operations?.length || 0,
         metadata: data.metadata
       });
 
       if (!data.success) {
-        console.error('❌ Backend reportó error:', data.message, data.errors);
+        console.error('❌ Supabase reportó error:', data.message);
         throw new Error(data.message || 'Error obteniendo datos del dashboard');
       }
 
-      if (!data.data || data.data.length === 0) {
-        console.warn('⚠️ No se recibieron operaciones del backend');
+      const operations = data.data?.operations || [];
+      if (!operations || operations.length === 0) {
+        console.warn('⚠️ No se recibieron operaciones de Supabase');
         console.log('Metadata:', data.metadata);
       }
 
       console.log('✅ Datos del dashboard procesados correctamente:', {
-        operaciones: data.data.length,
-        validOperations: data.metadata.processingStats?.validOperations,
-        errorCount: data.metadata.processingStats?.errorCount
+        operaciones: operations.length,
+        totalValue: data.metadata?.totalValue || 0,
+        completedOperations: data.metadata?.completedOperations || 0
       });
 
-      // TEMPORAL: Usar datos directos del backend sin mapeo
-      // const mappedOperations = mapBackendToFrontend(data.data || []);
-      // setOperations(mappedOperations);
-      
-      // Mapeo mínimo solo para Incoterms
-      const operationsWithIncoterms = (data.data || []).map((op: any) => {
-        // Extraer Incoterms del campo combinado
-        let incotermCompra: string | undefined;
-        let incotermVenta: string | undefined;
-        
-        if (op.incoterms && op.incoterms !== ' → ' && op.incoterms.trim()) {
-          if (op.incoterms.includes(' / ')) {
-            const [compra, venta] = op.incoterms.split(' / ');
-            incotermCompra = compra?.trim() || undefined;
-            incotermVenta = venta?.trim() || undefined;
-          } else {
-            incotermCompra = op.incoterms.trim();
-          }
-        }
-        
-        // Mantener toda la estructura original, solo agregar Incoterms
+      // Map Supabase data to frontend structure with timeline info
+      const mappedOperations = operations.map((op: any) => {
+        // Convert timeline from Supabase format to frontend format
+        const timeline = op.timeline ? {
+          states: op.timeline.map((t: any, index: number) => ({
+            id: index + 1,
+            name: t.fase,
+            status: t.estado === 'completado' ? 'completed' : 
+                   t.estado === 'en_proceso' ? 'in-progress' : 'pending',
+            progress: t.progreso || 0,
+            description: t.descripcion || '',
+            completedAt: t.fecha,
+            notes: t.notas
+          })),
+          currentState: op.timeline.findIndex((t: any) => t.estado === 'en_proceso') + 1 || 
+                       op.timeline.filter((t: any) => t.estado === 'completado').length,
+          overallProgress: op.progresoGeneral || 0
+        } : undefined;
+
         return {
-          ...op,
-          incotermCompra,
-          incotermVenta
+          id: op.id,
+          clientName: op.clienteCompleto,
+          clientNit: op.clienteNit,
+          providerName: op.proveedorBeneficiario,
+          totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
+          totalValueNumeric: op.valorTotal || 0,
+          operationValue: `$${op.valorOperacion?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
+          operationValueNumeric: op.valorOperacion || 0,
+          route: op.rutaComercial || 'Ruta no especificada',
+          assignedPerson: op.personaAsignada || 'No asignado',
+          progress: op.progresoGeneral || 0,
+          status: op.progresoGeneral >= 100 ? 'completed' : 
+                 op.progresoGeneral > 0 ? 'in-progress' : 'draft',
+          currentPhaseName: op.timeline?.[0]?.fase || 'Sin fase',
+          timeline,
+          updatedAt: op.ultimaActualizacion,
+          createdAt: op.created_at
         };
       });
       
-      setOperations(operationsWithIncoterms);
-      setMetadata(data.metadata);
+      setOperations(mappedOperations);
+      setMetadata(data.metadata || {
+        totalOperations: operations.length,
+        lastUpdated: new Date().toISOString()
+      });
 
     } catch (err) {
       console.error('❌ Error completo fetching dashboard data:', {

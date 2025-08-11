@@ -20,6 +20,7 @@ import {
 import { Operation, TimelineEvent, TimelineStatus, OperationStatus } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useDashboardData, BackendOperationCard, TimelineState, Timeline } from '../../hooks/useDashboardData';
+import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
 import { cn } from '../../utils/cn';
 
 // Helper functions
@@ -113,8 +114,10 @@ export default function FKTimeline({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'draft' | 'in-progress' | 'completed' | 'on-hold' | 'all'>('all');
 
-  // Use real backend data
-  const { operations, isLoading, error, refetch } = useDashboardData();
+  // Use real backend data - switch between admin and client data
+  const { operations, isLoading, error, refetch } = user?.role === 'administrator' 
+    ? useAdminDashboardData() 
+    : useDashboardData();
   
   // Filter operations based on user role and permissions
   const availableOperations = useMemo(() => {
