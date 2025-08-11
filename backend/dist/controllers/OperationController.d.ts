@@ -6,10 +6,12 @@ import { Request, Response } from 'express';
 export declare class OperationController {
     /**
      * GET /api/operations - Obtiene todas las operaciones del CSV
+     * ACTUALIZADO: Usa la misma data que el admin dashboard para consistencia
      */
     static getAllOperations(req: Request, res: Response): Promise<void>;
     /**
      * GET /api/operations/:id - Obtiene una operación específica por ID
+     * Usa EXACTAMENTE la misma data que el admin dashboard para consistencia
      */
     static getOperationById(req: Request, res: Response): Promise<void>;
     /**

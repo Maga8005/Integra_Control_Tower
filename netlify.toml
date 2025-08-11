@@ -1,0 +1,11 @@
+[build]
+  publish = "dist"
+  command = "npm install && npm run build:frontend"
+
+[build.environment]
+  NODE_ENV = "production"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

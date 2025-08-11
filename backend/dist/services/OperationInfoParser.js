@@ -15,7 +15,7 @@ const Operation_1 = require("../types/Operation");
 /**
  * Función principal que parsea todo el texto de la operación
  */
-function parseOperationInfo(text) {
+function parseOperationInfo(text, csvRow) {
     console.log('🔍 Iniciando parsing de información de operación...');
     try {
         // Limpiar texto de entrada
@@ -34,11 +34,14 @@ function parseOperationInfo(text) {
         const monedaText = extractValue(cleanText, /MONEDA DE PAGO SOLICITADO:\s*([A-Z]{3})/i) || 'USD';
         const monedaPago = Operation_1.Currency[monedaText] || Operation_1.Currency.USD;
         const terminosPago = extractValue(cleanText, /TÉRMINOS DE PAGO:\s*(.+?)(?=\nDATOS|$)/i) || '';
-        const incotermCompra = extractValue(cleanText, /ICOTERM COMPRA:\s*(.+?)(?=\n|ICOTERM|$)/i) || '';
-        const incotermVenta = extractValue(cleanText, /ICOTERM VENTA:\s*(.+?)(?=\n|OBSERVACIONES|$)/i) || '';
+        // Extraer Incoterms - soportar ambas variantes: ICOTERM e INCOTERM
+        const incotermCompra = extractValue(cleanText, /I[NC]?COTERMS? COMPRA:\s*([A-Z]{3,4})(?:\s*[-\s]|$)/i) ||
+            extractValue(cleanText, /INCOTERM COMPRA:\s*([A-Z]{3,4})(?:\s*[-\s]|$)/i) || '';
+        const incotermVenta = extractValue(cleanText, /I[NC]?COTERMS? VENTA:\s*([A-Z]{3,4})(?:\s*[-\s]|$)/i) ||
+            extractValue(cleanText, /INCOTERM VENTA:\s*([A-Z]{3,4})(?:\s*[-\s]|$)/i) || '';
         // Extraer datos usando funciones específicas
         const datosBancarios = extractDatosBancarios(cleanText);
-        const giros = extractGiros(cleanText);
+        const giros = extractGiros(cleanText, csvRow);
         const liberaciones = extractLiberaciones(cleanText);
         const result = {
             cliente,
@@ -89,40 +92,53 @@ function parseOperationInfo(text) {
 /**
  * Extrae información de giros del texto
  */
-function extractGiros(text) {
+function extractGiros(text, csvRow) {
     console.log('💰 Extrayendo información de giros...');
     try {
         const giros = [];
-        // Patrón más específico para encontrar SOLO bloques que contienen "VALOR SOLICITADO:"
-        // Excluir explícitamente secciones bancarias
-        const giroBlocks = text.split(/(?=VALOR SOLICITADO:)/i).filter(block => {
-            const hasValorSolicitado = block.includes('VALOR SOLICITADO:');
-            const isInBankingSection = block.includes('DATOS BANCARIOS') ||
-                block.includes('BENEFICIARIO:') ||
-                block.includes('NÚMERO DE CUENTA:') ||
-                block.includes('BANCO:');
-            return hasValorSolicitado && !isInBankingSection;
-        });
-        console.log(`📊 Encontrados ${giroBlocks.length} bloques de giros válidos`);
-        for (const block of giroBlocks) {
-            // Solo extraer valores que estén inmediatamente después de "VALOR SOLICITADO:"
-            const valorMatch = block.match(/VALOR SOLICITADO:\s*(\d+(?:\.\d+)?)/i);
-            const valorSolicitado = valorMatch ? parseFloat(valorMatch[1]) : 0;
-            const numeroGiro = extractValue(block, /NÚMERO DE GIRO:\s*(.+?)(?=\n|$)/i) || '';
-            const porcentajeGiro = extractValue(block, /PORCENTAJE DE GIRO:\s*(.+?)(?=\n|$)/i) || '';
-            // Validación más estricta: debe tener valor solicitado Y número de giro
-            if (valorSolicitado > 0 && numeroGiro && !numeroGiro.includes('CUENTA')) {
-                giros.push({
-                    valorSolicitado,
-                    numeroGiro: numeroGiro.trim(),
-                    porcentajeGiro: porcentajeGiro.trim(),
-                    estado: Operation_1.EstadoProceso.PENDIENTE,
-                    fechaVencimiento: null // Campo opcional - se calculará si es necesario
-                });
-                console.log(`💸 Giro extraído: ${numeroGiro} - $${valorSolicitado.toLocaleString()}`);
-            }
-            else {
-                console.log(`⚠️ Bloque descartado - Valor: ${valorSolicitado}, Giro: "${numeroGiro}"`);
+        // Patrón mejorado para capturar giros con formato de CSV multilinea
+        // Formato: - VALOR SOLICITADO: 75000\n- NÚMERO DE GIRO: 1° Giro a Proveedor\n- PORCENTAJE DE GIRO: 70% del total
+        const giroPattern = /-\s*VALOR SOLICITADO:\s*([0-9,]+(?:\.[0-9]+)?)\s*[\n\r]*-\s*NÚMERO DE GIRO:\s*([^\n\r]+)[\n\r]*-\s*PORCENTAJE DE GIRO:\s*([^\n\r]+)/gi;
+        // También buscar formato con formato de líneas separadas
+        const giroPattern2 = /VALOR SOLICITADO:\s*([0-9,]+(?:\.[0-9]+)?)\s*[\n\r]*.*?NÚMERO DE GIRO:\s*([^\n\r]+)[\n\r]*.*?PORCENTAJE DE GIRO:\s*([^\n\r]+)/gi;
+        // Patrón adicional para formato con separadores de línea (PRUEBA 2 format)
+        // Formato: - VALOR SOLICITADO: 20000\n- NÚMERO DE GIRO: 1er Giro a Proveedor\n- PORCENTAJE DE GIRO: 30% del total\n---------------
+        const giroPattern3 = /-\s*VALOR SOLICITADO:\s*([0-9,]+(?:\.[0-9]+)?)\s*[\n\r]+-\s*NÚMERO DE GIRO:\s*([^\n\r-]+)[\n\r]+-\s*PORCENTAJE DE GIRO:\s*([^\n\r-]+)/gi;
+        const patterns = [giroPattern, giroPattern2, giroPattern3];
+        for (const pattern of patterns) {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const valorText = match[1];
+                const numeroGiroText = match[2];
+                const porcentajeGiroText = match[3];
+                if (!valorText || !numeroGiroText || !porcentajeGiroText)
+                    continue;
+                const valorSolicitado = parseFloat(valorText.replace(/,/g, ''));
+                const numeroGiro = numeroGiroText.trim();
+                const porcentajeGiro = porcentajeGiroText.trim();
+                // Validación: debe tener valor válido y no estar duplicado
+                const isDuplicate = giros.some(g => g.valorSolicitado === valorSolicitado &&
+                    g.numeroGiro === numeroGiro);
+                if (valorSolicitado > 0 && numeroGiro && porcentajeGiro && !isDuplicate) {
+                    // Determinar estado del giro basado en CSV
+                    let estadoGiro = Operation_1.EstadoProceso.PENDIENTE;
+                    if (csvRow) {
+                        const estadoGiroProveedor = csvRow['10. ESTADO Giro Proveedor'] || '';
+                        // Si el campo contiene "Listo" significa que el giro está completado
+                        if (estadoGiroProveedor.toLowerCase().includes('listo')) {
+                            estadoGiro = Operation_1.EstadoProceso.COMPLETADO;
+                        }
+                    }
+                    giros.push({
+                        valorSolicitado,
+                        numeroGiro,
+                        porcentajeGiro,
+                        estado: estadoGiro,
+                        fechaVencimiento: undefined
+                    });
+                    const estadoTexto = estadoGiro === Operation_1.EstadoProceso.COMPLETADO ? 'completado' : 'pendiente';
+                    console.log(`💸 Giro extraído (${estadoTexto}): ${numeroGiro} - $${valorSolicitado.toLocaleString()}`);
+                }
             }
         }
         if (giros.length === 0) {
@@ -139,38 +155,60 @@ function extractGiros(text) {
  * Extrae información de liberaciones del texto
  */
 function extractLiberaciones(text) {
-    console.log('📋 Extrayendo información de liberaciones...');
+    console.log('📋 Extrayendo liberaciones ejecutadas...');
     try {
         const liberaciones = [];
-        // Buscar patrones de liberación
-        const liberacionPattern = /Liberación\s+(\d+)\s*\n.*?Capital:\s*(\d+(?:\.\d+)?)\s*[A-Z]{3}\s*\n.*?Fecha:\s*(\d{4}-\d{2}-\d{2})/gis;
-        let match;
-        while ((match = liberacionPattern.exec(text)) !== null) {
-            const numero = parseInt(match[1]) || 1;
-            const capital = parseFloat(match[2]) || 0;
-            const fecha = match[3] || new Date().toISOString().split('T')[0];
-            liberaciones.push({
-                numero,
-                capital,
-                fecha,
-                estado: Operation_1.EstadoProceso.PENDIENTE
-            });
-            console.log(`📅 Liberación extraída: ${numero} - ${capital} - ${fecha}`);
-        }
-        // Si no se encontraron liberaciones con el patrón estricto, buscar de forma más flexible
-        if (liberaciones.length === 0) {
-            const capitalMatch = text.match(/Capital:\s*(\d+(?:\.\d+)?)/i);
-            const fechaMatch = text.match(/Fecha:\s*(\d{4}-\d{2}-\d{2})/i);
-            if (capitalMatch && capitalMatch[1]) {
-                liberaciones.push({
-                    numero: 1,
-                    capital: parseFloat(capitalMatch[1]) || 0,
-                    fecha: fechaMatch && fechaMatch[1] ? fechaMatch[1] : new Date().toISOString().split('T')[0],
-                    estado: Operation_1.EstadoProceso.PENDIENTE,
-                    fechaVencimiento: null // Campo opcional - se calculará si es necesario
-                });
-                console.log('📅 Liberación extraída (modo flexible)');
+        // Patrón mejorado para formato CSV: - Liberación 1 - Capital: 70,000 EUR - Fecha: 2025-07-01
+        const liberacionPattern = /-\s*Liberación\s+(\d+)\s*-\s*Capital:\s*([0-9,]+(?:\.[0-9]+)?)\s*(USD|EUR|GBP|COP)?\s*-\s*Fecha:\s*(\d{4}-\d{2}-\d{2})/gi;
+        // Patrón alternativo para formatos con saltos de línea
+        const liberacionPattern2 = /Liberación\s+(\d+)\s*[\n\r]*.*?Capital:\s*[\n\r]*\s*([0-9,]+(?:\.[0-9]+)?)\s*(USD|EUR|GBP|COP)?\s*[\n\r]*.*?Fecha:\s*(\d{4}-\d{2}-\d{2})/gi;
+        // Patrón para formato simple con dos puntos
+        const liberacionPattern3 = /Liberación\s+(\d+)[^\n]*[\n\r]*Capital:\s*([0-9,]+(?:\.[0-9]+)?)\s*(USD|EUR|GBP|COP)?[\n\r]*Fecha:\s*(\d{4}-\d{2}-\d{2})/gi;
+        // Patrón específico para formato PRUEBA 2 (con saltos de línea entre Capital: y valor)
+        // - Liberación 1\n- Capital:\n40000 USD\n- Fecha: 2025-07-25
+        const liberacionPattern4 = /-\s*Liberación\s+(\d+)\s*[\n\r]*-\s*Capital:\s*[\n\r]*([0-9,]+(?:\.[0-9]+)?)\s*(USD|EUR|GBP|COP)?\s*[\n\r]*-\s*Fecha:\s*(\d{4}-\d{2}-\d{2})/gi;
+        const patterns = [liberacionPattern, liberacionPattern2, liberacionPattern3, liberacionPattern4];
+        for (const pattern of patterns) {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const numeroText = match[1];
+                const capitalText = match[2];
+                const moneda = match[3] || '';
+                const fecha = match[4];
+                if (!numeroText || !capitalText || !fecha)
+                    continue;
+                const numero = parseInt(numeroText);
+                const capital = parseFloat(capitalText.replace(/,/g, ''));
+                // Validar que no esté duplicado
+                const isDuplicate = liberaciones.some(lib => lib.numero === numero &&
+                    lib.capital === capital &&
+                    lib.fecha === fecha);
+                if (numero > 0 && capital > 0 && fecha && !isDuplicate) {
+                    // Determinar estado basado en la fecha
+                    const fechaObj = new Date(fecha);
+                    const ahora = new Date();
+                    const estado = fechaObj <= ahora ? Operation_1.EstadoProceso.COMPLETADO : Operation_1.EstadoProceso.PENDIENTE;
+                    liberaciones.push({
+                        numero,
+                        capital,
+                        fecha,
+                        estado
+                    });
+                    const estadoTexto = estado === Operation_1.EstadoProceso.COMPLETADO ? 'ejecutada' : 'programada';
+                    console.log(`💰 Liberación ${estadoTexto}: ${numero} - $${capital.toLocaleString()} ${moneda} - ${fecha}`);
+                }
             }
+        }
+        // Ordenar por número de liberación
+        liberaciones.sort((a, b) => a.numero - b.numero);
+        if (liberaciones.length > 0) {
+            const totalLiberaciones = liberaciones.reduce((sum, lib) => sum + lib.capital, 0);
+            const ejecutadas = liberaciones.filter(lib => lib.estado === Operation_1.EstadoProceso.COMPLETADO).length;
+            const programadas = liberaciones.filter(lib => lib.estado === Operation_1.EstadoProceso.PENDIENTE).length;
+            console.log(`✅ ${liberaciones.length} liberaciones encontradas: ${ejecutadas} ejecutadas, ${programadas} programadas. Total: $${totalLiberaciones.toLocaleString()}`);
+        }
+        else {
+            console.log('ℹ️ No se encontraron liberaciones');
         }
         return liberaciones;
     }
@@ -223,7 +261,7 @@ function extractDatosBancarios(text) {
 function extractValue(text, regex) {
     try {
         const match = text.match(regex);
-        const value = match && match[1] ? match[1].trim() : '';
+        const value = match?.[1]?.trim() || '';
         if (value) {
             console.log(`🔍 Valor extraído con regex ${regex.source}: "${value}"`);
         }
@@ -240,7 +278,7 @@ function extractValue(text, regex) {
 function extractNumber(text, regex) {
     try {
         const match = text.match(regex);
-        const numberStr = match && match[1] ? match[1] : '0';
+        const numberStr = match?.[1] || '0';
         const number = parseFloat(numberStr.replace(/,/g, '')) || 0;
         if (number > 0) {
             console.log(`🔢 Número extraído con regex ${regex.source}: ${number}`);
@@ -346,7 +384,7 @@ class OperationInfoParser {
         const info = {};
         // Cliente
         const clienteMatch = text.match(this.FIELD_PATTERNS.CLIENTE);
-        if (clienteMatch) {
+        if (clienteMatch?.[1]) {
             info.cliente = clienteMatch[1].trim();
         }
         else {
@@ -354,7 +392,7 @@ class OperationInfoParser {
         }
         // País importador
         const paisImportadorMatch = text.match(this.FIELD_PATTERNS.PAIS_IMPORTADOR);
-        if (paisImportadorMatch) {
+        if (paisImportadorMatch?.[1]) {
             info.paisImportador = paisImportadorMatch[1].trim();
         }
         else {
@@ -362,7 +400,7 @@ class OperationInfoParser {
         }
         // País exportador
         const paisExportadorMatch = text.match(this.FIELD_PATTERNS.PAIS_EXPORTADOR);
-        if (paisExportadorMatch) {
+        if (paisExportadorMatch?.[1]) {
             info.paisExportador = paisExportadorMatch[1].trim();
         }
         else {
@@ -370,7 +408,7 @@ class OperationInfoParser {
         }
         // Valor total
         const valorMatch = text.match(this.FIELD_PATTERNS.VALOR_TOTAL);
-        if (valorMatch) {
+        if (valorMatch?.[1]) {
             info.valorTotalCompra = parseFloat(valorMatch[1]);
         }
         else {
@@ -378,7 +416,7 @@ class OperationInfoParser {
         }
         // Moneda
         const monedaMatch = text.match(this.FIELD_PATTERNS.MONEDA_PAGO);
-        if (monedaMatch) {
+        if (monedaMatch?.[1]) {
             const monedaCode = monedaMatch[1].trim();
             info.monedaPago = this.CURRENCY_MAP[monedaCode] || Operation_1.Currency.USD;
         }
@@ -388,7 +426,7 @@ class OperationInfoParser {
         }
         // Términos de pago
         const terminosMatch = text.match(this.FIELD_PATTERNS.TERMINOS_PAGO);
-        if (terminosMatch) {
+        if (terminosMatch?.[1]) {
             info.terminosPago = terminosMatch[1].trim();
         }
         else {
@@ -396,11 +434,11 @@ class OperationInfoParser {
         }
         // Incoterms
         const incotermCompraMatch = text.match(this.FIELD_PATTERNS.INCOTERM_COMPRA);
-        if (incotermCompraMatch) {
+        if (incotermCompraMatch?.[1]) {
             info.incotermCompra = incotermCompraMatch[1].trim();
         }
         const incotermVentaMatch = text.match(this.FIELD_PATTERNS.INCOTERM_VENTA);
-        if (incotermVentaMatch) {
+        if (incotermVentaMatch?.[1]) {
             info.incotermVenta = incotermVentaMatch[1].trim();
         }
         return info;
@@ -415,11 +453,11 @@ class OperationInfoParser {
         const numeroCuentaMatch = text.match(this.FIELD_PATTERNS.NUMERO_CUENTA);
         const swiftMatch = text.match(this.FIELD_PATTERNS.SWIFT);
         const bankingInfo = {
-            beneficiario: beneficiarioMatch ? beneficiarioMatch[1].trim() : '',
-            banco: bancoMatch ? bancoMatch[1].trim() : '',
-            direccion: direccionMatch ? direccionMatch[1].trim() : '',
-            numeroCuenta: numeroCuentaMatch ? numeroCuentaMatch[1].trim() : '',
-            swift: swiftMatch ? swiftMatch[1].trim() : '',
+            beneficiario: beneficiarioMatch?.[1]?.trim() || '',
+            banco: bancoMatch?.[1]?.trim() || '',
+            direccion: direccionMatch?.[1]?.trim() || '',
+            numeroCuenta: numeroCuentaMatch?.[1]?.trim() || '',
+            swift: swiftMatch?.[1]?.trim() || '',
             paisBanco: '' // Se puede inferir de la dirección o país exportador
         };
         // Validar campos críticos de datos bancarios
@@ -447,9 +485,9 @@ class OperationInfoParser {
             let match;
             while ((match = pattern.exec(text)) !== null) {
                 try {
-                    const valorSolicitado = parseFloat(match[1]);
-                    const numeroGiro = match[2].trim();
-                    const porcentajeGiro = match[3].trim();
+                    const valorSolicitado = parseFloat(match[1] || '0');
+                    const numeroGiro = (match[2] || '').trim();
+                    const porcentajeGiro = (match[3] || '').trim();
                     if (!isNaN(valorSolicitado) && numeroGiro && porcentajeGiro) {
                         giros.push({
                             valorSolicitado,
@@ -459,7 +497,7 @@ class OperationInfoParser {
                         });
                     }
                     else {
-                        warnings.push(`Giro con datos incompletos encontrado: valor=${match[1]}, numero=${match[2]}, porcentaje=${match[3]}`);
+                        warnings.push(`Giro con datos incompletos encontrado: valor=${match[1] || 'undefined'}, numero=${match[2] || 'undefined'}, porcentaje=${match[3] || 'undefined'}`);
                     }
                 }
                 catch (error) {
@@ -477,14 +515,23 @@ class OperationInfoParser {
      */
     static extractLiberaciones(text, errors, warnings) {
         const liberaciones = [];
-        // Patrón para encontrar liberaciones
-        const liberacionPattern = /Liberación\s+(\d+)\s*\n.*?Capital:\s*(\d+(?:\.\d+)?)\s*[A-Z]{3}\s*\n.*?Fecha:\s*(\d{4}-\d{2}-\d{2})/gis;
+        // Patrón para encontrar liberaciones (mejorado para capturar múltiples liberaciones)
+        const liberacionPattern = /-\s*Liberación\s+(\d+)\s*\n\s*-\s*Capital:\s*\n\s*(\d+(?:\.\d+)?)\s+USD\s*\n\s*-\s*Fecha:\s*(\d{4}-\d{2}-\d{2})/gi;
+        // Debug logging
+        console.log('🔍 [LIBERACIONES] Buscando liberaciones en texto...');
+        console.log('📝 [LIBERACIONES] Texto length:', text.length);
         let match;
         while ((match = liberacionPattern.exec(text)) !== null) {
+            console.log(`💰 [LIBERACIONES] Match encontrado:`, {
+                numero: match[1],
+                capital: match[2],
+                fecha: match[3],
+                index: match.index
+            });
             try {
-                const numero = parseInt(match[1]);
-                const capital = parseFloat(match[2]);
-                const fecha = match[3].trim();
+                const numero = parseInt(match[1] || '0');
+                const capital = parseFloat(match[2] || '0');
+                const fecha = (match[3] || '').trim();
                 if (!isNaN(numero) && !isNaN(capital) && fecha) {
                     liberaciones.push({
                         numero,
@@ -494,7 +541,7 @@ class OperationInfoParser {
                     });
                 }
                 else {
-                    warnings.push(`Liberación con datos inválidos: numero=${match[1]}, capital=${match[2]}, fecha=${match[3]}`);
+                    warnings.push(`Liberación con datos inválidos: numero=${match[1] || 'undefined'}, capital=${match[2] || 'undefined'}, fecha=${match[3] || 'undefined'}`);
                 }
             }
             catch (error) {
@@ -534,14 +581,14 @@ class OperationInfoParser {
      */
     static extractPercentage(text) {
         const percentageMatch = text.match(/(\d+(?:\.\d+)?)%/);
-        return percentageMatch ? parseFloat(percentageMatch[1]) : null;
+        return percentageMatch?.[1] ? parseFloat(percentageMatch[1]) : null;
     }
     /**
      * Método utilitario para extraer valores monetarios
      */
     static extractMonetaryValue(text) {
         const valueMatch = text.match(/(\d+(?:,\d{3})*(?:\.\d{2})?)/);
-        if (valueMatch) {
+        if (valueMatch?.[1]) {
             return parseFloat(valueMatch[1].replace(/,/g, ''));
         }
         return null;

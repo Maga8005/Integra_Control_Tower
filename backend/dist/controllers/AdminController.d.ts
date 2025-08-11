@@ -60,5 +60,33 @@ export declare class AdminController {
      * Parsing robusto de CSV que maneja campos multilínea correctamente
      */
     private static parseCSVContentRobust;
+    /**
+     * POST /api/admin/upload-country-csv/:country - Upload CSV específico por país (UNIFICADO)
+     */
+    static uploadCountryCSV(req: Request, res: Response): Promise<void>;
+    /**
+     * GET /api/admin/country-data/:country - Obtener datos específicos por país
+     */
+    static getCountryData(req: Request, res: Response): Promise<void>;
+    /**
+     * POST /api/admin/process-mexico-csv - Procesar CSV de México específicamente
+     */
+    static processMexicoCSV(req: Request, res: Response): Promise<void>;
+    /**
+     * GET /api/admin/country-comparison - Comparar estructuras de CSV entre países
+     */
+    static compareCountryCSVs(req: Request, res: Response): Promise<void>;
+    /**
+     * Crear backup del CSV actual por país con timestamp
+     */
+    private static createCountryCSVBackup;
+    /**
+     * Guardar nuevo archivo CSV por país
+     */
+    private static saveCountryCSV;
+    /**
+     * GET /api/admin/countries - Listar países disponibles y configuraciones
+     */
+    static getAvailableCountries(req: Request, res: Response): Promise<void>;
 }
 //# sourceMappingURL=AdminController.d.ts.map

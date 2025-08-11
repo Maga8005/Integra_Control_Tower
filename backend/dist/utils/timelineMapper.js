@@ -1,7 +1,7 @@
 "use strict";
 /**
  * Mapeo específico de timeline de 5 estados basado en columnas CSV
- * Integra Control Tower MVP
+ * Integra Control Tower MVP - Soporte multi-país (Colombia y México)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.mapState1_SolicitudEnviada = mapState1_SolicitudEnviada;
@@ -11,11 +11,12 @@ exports.mapState4_EnvioYLogistica = mapState4_EnvioYLogistica;
 exports.mapState5_OperacionCompletada = mapState5_OperacionCompletada;
 exports.mapCompleteTimeline = mapCompleteTimeline;
 const csvMappers_1 = require("./csvMappers");
+const csvMappers_2 = require("./csvMappers");
 /**
  * Estado 1: Solicitud Enviada
  * Basado en columna "1. ESTADO Firma Cotización"
  */
-function mapState1_SolicitudEnviada(csvRow) {
+function mapState1_SolicitudEnviada(csvRow, countryCode = 'CO') {
     const estadoFirma = csvRow['1. ESTADO Firma Cotización'] || '';
     console.log('📋 Estado 1 - Firma Cotización:', estadoFirma);
     let status = 'pending';
@@ -60,8 +61,9 @@ function mapState1_SolicitudEnviada(csvRow) {
 /**
  * Estado 2: Documentos de Operación y Pago Cuota Operacional
  * Basado en columnas "2. ESTADO factura Cuota Operacional" y "4. ESTADO pago Cuota Operacional"
+ * NOTA: Mismo comportamiento para Colombia y México
  */
-function mapState2_DocumentosYCuota(csvRow) {
+function mapState2_DocumentosYCuota(csvRow, countryCode = 'CO') {
     const estadoFacturaCuota = csvRow['2. ESTADO factura Cuota Operacional'] || '';
     const estadoPagoCuota = csvRow['4. ESTADO pago Cuota Operacional'] || '';
     console.log('📄 Estado 2 - Documentos y Cuota:', {
@@ -107,21 +109,34 @@ function mapState2_DocumentosYCuota(csvRow) {
 }
 /**
  * Estado 3: Procesamiento de Pago
- * Basado en parsing de valores en "5. Info Gnal + Info Compra Int"
- * Compara valor total vs valores solicitados
+ * COL: Incluye verificación de "8. ESTADO Doc Legal X Comp" si está disponible
+ * MEX: Solo procesa información de pagos sin Doc Legal X Comp
  */
-function mapState3_ProcesamientoPago(csvRow) {
+function mapState3_ProcesamientoPago(csvRow, countryCode = 'CO') {
+    const config = csvMappers_1.COUNTRY_CONFIGS[countryCode];
     const infoGeneral = csvRow['5. Info Gnal + Info Compra Int'] || '';
     const infoGiros = csvRow['10. Info por GIRO Proveedor'] || '';
-    console.log('💰 Estado 3 - Procesamiento de Pago');
+    // Verificar Doc Legal X Comp solo para Colombia
+    const estadoDocLegalXComp = config.hasDocLegalXComp ? csvRow['8. ESTADO Doc Legal X Comp'] || '' : '';
+    console.log(`💰 Estado 3 - Procesamiento de Pago (${config.name})`);
+    if (config.hasDocLegalXComp) {
+        console.log('📋 Verificando Doc Legal X Comp:', estadoDocLegalXComp);
+    }
     let status = 'pending';
     let progress = 0;
     let description = 'Esperando procesamiento de pagos';
     let notes = '';
     try {
         // Parsear info general para obtener valor total
-        const parsedInfo = (0, csvMappers_1.parseInfoGeneralColumn)(infoGeneral);
+        const parsedInfo = (0, csvMappers_2.parseInfoGeneralColumn)(infoGeneral);
         const valorTotal = parsedInfo.valor;
+        // Verificar estado de Doc Legal X Comp para Colombia
+        let docLegalXCompCompleto = true; // Por defecto para México
+        if (config.hasDocLegalXComp && estadoDocLegalXComp) {
+            const docLegalLower = estadoDocLegalXComp.toLowerCase().trim();
+            docLegalXCompCompleto = docLegalLower.includes('listo') || docLegalLower.includes('completado');
+            console.log('📋 Doc Legal X Comp completo:', docLegalXCompCompleto);
+        }
         if (valorTotal > 0) {
             // Extraer valores solicitados de la información de giros
             const valoresSolicitados = extractValoresSolicitados(infoGeneral, infoGiros);
@@ -129,19 +144,31 @@ function mapState3_ProcesamientoPago(csvRow) {
             console.log('💰 Análisis de pagos:', {
                 valorTotal,
                 totalSolicitado,
-                valores: valoresSolicitados
+                valores: valoresSolicitados,
+                docLegalXCompCompleto: config.hasDocLegalXComp ? docLegalXCompCompleto : 'N/A'
             });
-            if (totalSolicitado >= valorTotal * 0.98) { // 98% tolerancia
+            // Para Colombia: requiere Doc Legal X Comp completado además de pagos
+            // Para México: solo requiere pagos completados
+            const paymentsComplete = totalSolicitado >= valorTotal * 0.98; // 98% tolerancia
+            const allRequirementsComplete = paymentsComplete && docLegalXCompCompleto;
+            if (allRequirementsComplete) {
                 status = 'completed';
                 progress = 100;
                 description = `Pagos completados: $${totalSolicitado.toLocaleString()}`;
-                notes = `Total: $${valorTotal.toLocaleString()}, Pagado: $${totalSolicitado.toLocaleString()}`;
+                notes = `Total: $${valorTotal.toLocaleString()}, Pagado: $${totalSolicitado.toLocaleString()}` +
+                    (config.hasDocLegalXComp ? ' | Doc Legal X Comp: Completo' : '');
             }
-            else if (totalSolicitado > 0) {
+            else if (totalSolicitado > 0 || !docLegalXCompCompleto) {
                 status = 'in-progress';
-                progress = Math.round((totalSolicitado / valorTotal) * 100);
+                let baseProgress = Math.round((totalSolicitado / valorTotal) * 100);
+                // Para Colombia, ajustar progreso si falta Doc Legal X Comp
+                if (config.hasDocLegalXComp && !docLegalXCompCompleto) {
+                    baseProgress = Math.min(baseProgress, 80); // Máximo 80% sin Doc Legal X Comp
+                }
+                progress = baseProgress;
                 description = `Pagos en proceso: ${progress}% completado`;
-                notes = `Total: $${valorTotal.toLocaleString()}, Pagado: $${totalSolicitado.toLocaleString()}`;
+                notes = `Total: $${valorTotal.toLocaleString()}, Pagado: $${totalSolicitado.toLocaleString()}` +
+                    (config.hasDocLegalXComp ? ` | Doc Legal X Comp: ${docLegalXCompCompleto ? 'Completo' : 'Pendiente'}` : '');
             }
             else {
                 // No hay pagos pero hay valor total
@@ -309,18 +336,20 @@ function extractLiberaciones(infoGeneral) {
  * Estado 4: Envío y Logística
  * NUEVA LÓGICA: Basado en datos de "Liberación" en "5. Info Gnal + Info Compra Int"
  * Completo cuando la suma de liberaciones es igual o cercana al valor total
+ * NOTA: Mismo comportamiento para Colombia y México
  */
-function mapState4_EnvioYLogistica(csvRow) {
+function mapState4_EnvioYLogistica(csvRow, countryCode = 'CO') {
     const estadoProforma = csvRow['9. ESTADO Proforma / Factura final'] || '';
     const infoGeneral = csvRow['5. Info Gnal + Info Compra Int'] || '';
-    console.log('🚚 Estado 4 - Envío y Logística (basado en Liberaciones)');
+    const config = csvMappers_1.COUNTRY_CONFIGS[countryCode];
+    console.log(`🚚 Estado 4 - Envío y Logística (basado en Liberaciones) - ${config.name}`);
     let status = 'pending';
     let progress = 0;
     let description = 'Esperando información de liberaciones';
     let notes = '';
     try {
         // Parsear info general para obtener valor total
-        const parsedInfo = (0, csvMappers_1.parseInfoGeneralColumn)(infoGeneral);
+        const parsedInfo = (0, csvMappers_2.parseInfoGeneralColumn)(infoGeneral);
         const valorTotal = parsedInfo.valor;
         // Extraer información de liberaciones
         const liberaciones = extractLiberaciones(infoGeneral);
@@ -399,7 +428,7 @@ function mapState4_EnvioYLogistica(csvRow) {
  * Basado en la evaluación general de todos los estados anteriores
  * Se considera completada cuando todos los estados previos están al 100%
  */
-function mapState5_OperacionCompletada(csvRow) {
+function mapState5_OperacionCompletada(csvRow, countryCode = 'CO') {
     console.log('🎯 Estado 5 - Operación Completada');
     let status = 'pending';
     let progress = 0;
@@ -407,10 +436,10 @@ function mapState5_OperacionCompletada(csvRow) {
     let notes = '';
     try {
         // Evaluar estados previos para determinar completitud
-        const state1 = mapState1_SolicitudEnviada(csvRow);
-        const state2 = mapState2_DocumentosYCuota(csvRow);
-        const state3 = mapState3_ProcesamientoPago(csvRow);
-        const state4 = mapState4_EnvioYLogistica(csvRow);
+        const state1 = mapState1_SolicitudEnviada(csvRow, countryCode);
+        const state2 = mapState2_DocumentosYCuota(csvRow, countryCode);
+        const state3 = mapState3_ProcesamientoPago(csvRow, countryCode);
+        const state4 = mapState4_EnvioYLogistica(csvRow, countryCode);
         const previousStates = [state1, state2, state3, state4];
         const completedStates = previousStates.filter(s => s.status === 'completed');
         const inProgressStates = previousStates.filter(s => s.status === 'in-progress');
@@ -466,15 +495,17 @@ function mapState5_OperacionCompletada(csvRow) {
 }
 /**
  * Función principal que mapea todos los estados del timeline
+ * ACTUALIZADO: Soporte multi-país
  */
-function mapCompleteTimeline(csvRow) {
-    console.log('🔄 Mapeando timeline completo para operación...');
-    const state1 = mapState1_SolicitudEnviada(csvRow);
-    const state2 = mapState2_DocumentosYCuota(csvRow);
-    const state3 = mapState3_ProcesamientoPago(csvRow);
+function mapCompleteTimeline(csvRow, countryCode = 'CO') {
+    const config = csvMappers_1.COUNTRY_CONFIGS[countryCode];
+    console.log(`🔄 Mapeando timeline completo para operación (${config.name})...`);
+    const state1 = mapState1_SolicitudEnviada(csvRow, countryCode);
+    const state2 = mapState2_DocumentosYCuota(csvRow, countryCode);
+    const state3 = mapState3_ProcesamientoPago(csvRow, countryCode);
     // Estados 4 y 5 - Implementación completa
-    const state4 = mapState4_EnvioYLogistica(csvRow);
-    const state5 = mapState5_OperacionCompletada(csvRow);
+    const state4 = mapState4_EnvioYLogistica(csvRow, countryCode);
+    const state5 = mapState5_OperacionCompletada(csvRow, countryCode);
     const states = [state1, state2, state3, state4, state5];
     // Determinar estado actual (primer estado no completado)
     let currentState = 5; // Por defecto, todo completado
