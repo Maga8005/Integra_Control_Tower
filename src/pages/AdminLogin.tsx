@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import FKAdminAuthForm from '../components/forms/FKAdminAuthForm';
+import { environment } from '../config/environment';
 
 // Admin login component separate from client login
 export default function AdminLogin() {
@@ -58,6 +59,22 @@ export default function AdminLogin() {
               onBackToClient={handleBackToClient}
             />
           </div>
+
+          {/* Demo Info - Only show in production */}
+          {environment.isProduction && (
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="text-sm font-medium text-blue-900 mb-2">
+                🚀 Demo - Credenciales de Acceso
+              </h4>
+              <div className="text-sm text-blue-800">
+                <p><strong>Email:</strong> admin@integra.com</p>
+                <p><strong>Password:</strong> admin123</p>
+              </div>
+              <p className="text-xs text-blue-600 mt-2">
+                Esta es una versión demo. En producción real estas credenciales serían seguras.
+              </p>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="mt-8 text-center">

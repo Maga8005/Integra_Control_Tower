@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, createContext, useContext, ReactNode 
 import { User, UserRole, AdminLoginResponse } from '../types';
 import { getUserByEmail, getDemoUser } from '../data/users';
 import { useLocalStorage, useRecentActivity } from './useLocalStorage';
+import { environment } from '../config/environment';
+import { mockAdminLogin } from '../services/mockAuthService';
 
 // Interfaces para autenticación por NIT
 interface ClientLoginResponse {
@@ -255,27 +257,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     try {
       console.log('🔐 Iniciando login admin con email:', email);
+      console.log('🌍 Usando mock backend:', environment.useMockBackend);
       
-      // Call backend admin auth endpoint
-      const response = await fetch('http://localhost:3001/api/auth/admin-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      let loginData: AdminLoginResponse;
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Error en login admin:', errorData);
-        setIsLoading(false);
-        return { 
-          success: false, 
-          error: errorData.error || 'Error de conexión con el servidor' 
-        };
+      if (environment.useMockBackend) {
+        // Usar servicio mock en producción
+        console.log('📦 Usando mock auth service');
+        loginData = await mockAdminLogin(email, password);
+      } else {
+        // Call backend admin auth endpoint en desarrollo
+        console.log('🔗 Conectando a backend en desarrollo');
+        const response = await fetch(`${environment.apiBaseUrl}/api/auth/admin-login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('❌ Error en login admin:', errorData);
+          setIsLoading(false);
+          return { 
+            success: false, 
+            error: errorData.error || 'Error de conexión con el servidor' 
+          };
+        }
+        
+        loginData = await response.json();
       }
       
-      const loginData: AdminLoginResponse = await response.json();
       console.log('✅ Respuesta de login admin:', loginData);
       
       if (!loginData.success || !loginData.admin || !loginData.token) {
