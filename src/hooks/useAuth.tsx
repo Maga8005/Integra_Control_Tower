@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, createContext, useContext, ReactNode 
 import { User, UserRole, AdminLoginResponse } from '../types';
 import { getUserByEmail, getDemoUser } from '../data/users';
 import { useLocalStorage, useRecentActivity } from './useLocalStorage';
-import { environment } from '../config/environment';
+import { environment, supabaseHeaders } from '../config/environment';
 import { mockAdminLogin } from '../services/mockAuthService';
 
 // Interfaces para autenticación por NIT
@@ -280,10 +280,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // Call backend admin auth endpoint en desarrollo
         console.log('🔗 Conectando a backend en desarrollo');
-        const response = await fetch(`${environment.apiBaseUrl}/api/auth/admin-login`, {
+        const response = await fetch(`${environment.apiBaseUrl}/admin-login`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
+            ...supabaseHeaders,
           },
           body: JSON.stringify({ email, password }),
         });

@@ -19,12 +19,23 @@ const isProduction = !isDevelopment;
 // Para mayor seguridad, también verificar si estamos en Netlify
 const isNetlify = hostname.includes('netlify.app') || hostname.includes('netlify.com');
 
+// URLs de Supabase Edge Functions
+const SUPABASE_FUNCTIONS_URL = 'https://gfdaygaujovmyuqtehrv.supabase.co/functions/v1';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmZGF5Z2F1am92bXl1cXRlaHJ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5Mzg1NjIsImV4cCI6MjA3MDUxNDU2Mn0.YYDQebWyZdLedP9MNrQ-63BFclO21yrrQv4P7Qujc90';
+
 // Configuración del entorno
 export const environment: EnvironmentConfig = {
-  apiBaseUrl: isDevelopment ? 'http://localhost:3001' : '',
+  apiBaseUrl: SUPABASE_FUNCTIONS_URL, // Siempre usar Supabase
   isDevelopment,
   isProduction: isProduction || isNetlify,
-  useMockBackend: isProduction || isNetlify, // Usar mock en producción y Netlify
+  useMockBackend: false, // Siempre usar Supabase
+};
+
+// Headers para Supabase
+export const supabaseHeaders = {
+  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+  'apikey': SUPABASE_ANON_KEY,
+  'Content-Type': 'application/json',
 };
 
 console.log('🌍 Configuración de entorno:', {
