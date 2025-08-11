@@ -168,15 +168,15 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
       setOperations(mappedOperations);
       
       // Create metadata compatible with the expected structure
-      const metadata = {
-        lastUpdated: data.timestamp,
-        processingStats: {
-          validOperations: operations.length,
-          errorCount: validation.errors?.length || 0,
-          warningCount: validation.warnings?.length || 0
-        }
+      const processedMetadata = {
+        totalRecords: mappedOperations.length,
+        validRecords: mappedOperations.length,
+        errors: validation.errors || [],
+        warnings: validation.warnings || [],
+        processedAt: data.timestamp || new Date().toISOString(),
+        source: 'backend'
       };
-      setMetadata(metadata);
+      setMetadata(processedMetadata);
 
     } catch (err) {
       console.error('❌ [ADMIN] Error completo fetching dashboard data:', {
