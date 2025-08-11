@@ -91,19 +91,17 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
         const data = mockDashboardData;
         console.log('👑 [ADMIN] Datos mock:', data);
         
-        setAdminDashboardData(data);
-        
-        const stats = {
-          totalOperations: 0,
-          lastUpdated: new Date().toISOString(),
-          processingStats: {
-            validOperations: 0,
-            errorCount: 0,
-            warningCount: 0
-          }
-        };
-        
-        setProcessingStats(stats);
+        // Usar los datos mock (operaciones vacías por ahora)
+        setOperations(data.operations || []);
+        setMetadata({
+          totalRecords: 0,
+          validRecords: 0,
+          errors: [],
+          warnings: [],
+          processedAt: new Date().toISOString(),
+          source: 'mock'
+        });
+        setError(null);
         setIsLoading(false);
         return;
       }
