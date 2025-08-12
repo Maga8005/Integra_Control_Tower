@@ -16,11 +16,7 @@ Nombre,Completado,"Persona asignada","Fecha de vencimiento",Proceso,"1. ESTADO F
 *************************
 - ICOTERM COMPRA: FOB - EXW
 - ICOTERM VENTA: DAP - mexicali
-- OBSERVACIONES: Se requiere realizar previo en origen",Listo,juan.sioufi@finkargo.com,"- CLIENTE: LITRA SA DE CV
-- RFC: LOMJ721101QY2
-- VALOR OPERACIÓN: 85599"
+- OBSERVACIONES: Se requiere realizar previo en origen",Listo,juan.sioufi@finkargo.com,
 <#C095XN3RG3H|>,false,,,"1. Aprobación de Cotización",Solicitado,F09778KCHS5,,,Listo,F097GFLCBNC,,,C095XN3RG3H,,"Giro 1 / Proveedor Mercancía",,,,,"Listo - Pago Confirmado",F098WUH82AE,,F098UV9EC8M,,,,"- VALOR SOLICITADO: 70000
 - NÚMERO DE GIRO: 2do Giro a Proveedor
-- PORCENTAJE DE GIRO: 70% del total",,,luisa.gomez@finkargo.com,"- CLIENTE: PRUEBA
-- RFC: PDE140513FR0
-- VALOR OPERACIÓN: 165800"
+- PORCENTAJE DE GIRO: 70% del total",,,luisa.gomez@finkargo.com,
