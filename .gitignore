@@ -33,3 +33,16 @@ backend/
 # Logs
 logs
 *.log
+
+# Debug and test files
+debug-*.js
+debug-*.cjs
+test-*.js
+test-*.cjs
+test-*.html
+check-*.html
+upload-csv-with-parser-*.ts
+*-parser-*.ts
+
+# Development artifacts
+img_feedback/
