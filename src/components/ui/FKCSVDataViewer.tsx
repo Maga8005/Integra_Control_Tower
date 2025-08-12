@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { 
   RefreshCw, 
   Database, 
@@ -11,11 +11,14 @@ import {
   Clock,
   Search,
   Filter,
-  Download
+  Download,
+  Upload,
+  FileText
 } from 'lucide-react';
 import { useCSVData } from '../../hooks/useCSVData';
 import { cn } from '../../utils/cn';
 import FKBackendStatus from './FKBackendStatus';
+import { environment, supabaseHeaders } from '../../config/environment';
 
 // Función utilitaria para extraer RFC/NIT del texto
 interface ParsedRFC {
@@ -97,6 +100,216 @@ export default function FKCSVDataViewer({ className }: FKCSVDataViewerProps) {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [searchFilter, setSearchFilter] = useState('');
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
+  
+  // CSV Upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Test Parser with sample data
+  const testParserWithSampleData = async () => {
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadStatus('Probando parser con datos de ejemplo...');
+
+    try {
+      // Sample CSV data exactly like our tests
+      const sampleCSV = `"1. Numero de operación","2. Cliente","5. Info Gnal + Info Compra Int","10. ESTADO Giro Proveedor","Docu. Cliente"
+"OP-TEST-001","EMPRESA PRUEBA","CLIENTE: MALE
+PAÍS IMPORTADOR: MÉXICO  
+PAÍS EXPORTADOR: CHINA
+VALOR TOTAL DE COMPRA: 100000
+MONEDA DE PAGO SOLICITADO: USD NA
+TÉRMINOS DE PAGO: 30% ADVANCE / 70% AGAINST BL COPY
+DATOS BANCARIOS
+BENEFICIARIO: BANCO BBVA
+BANCO: 4567896
+DIRECCIÓN: SHANGHAI 10256899
+NÚMERO DE CUENTA: 46587966666
+SWIFT: BSHANGBB
+
+ICOTERM COMPRA: FOB - SHANGHAI
+ICOTERM VENTA: DAP - ZONA FRANCA
+
+VALOR SOLICITADO: 30000
+NÚMERO DE GIRO: 1er Giro a Proveedor
+PORCENTAJE DE GIRO: 30% del total
+
+VALOR SOLICITADO: 70000
+NÚMERO DE GIRO: 2do Giro a Proveedor  
+PORCENTAJE DE GIRO: 70% del total
+
+Liberación 1
+Capital: 100000 USD
+Fecha: 2025-07-25","Listo","12345678-9"`;
+
+      console.log('🧪 Probando parser con datos de ejemplo...');
+
+      const response = await fetch(`${environment.apiBaseUrl}/upload-csv-with-parser`, {
+        method: 'POST',
+        headers: {
+          ...supabaseHeaders,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          csvContent: sampleCSV,
+          country: selectedCountry,
+          fileName: 'test_parser_sample.csv'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error HTTP ${response.status}: ${errorData}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        const operations = result.data?.operations || [];
+        const girosTotales = operations.reduce((sum: number, op: any) => sum + (op.giros_count || 0), 0);
+        const liberacionesTotales = operations.reduce((sum: number, op: any) => sum + (op.liberaciones_count || 0), 0);
+        const creadas = result.data?.created || 0;
+        const actualizadas = result.data?.updated || 0;
+        const eliminadas = result.data?.deleted || 0;
+        const action = operations[0]?.action;
+        
+        setUploadStatus(
+          `🧪 Test del parser completado exitosamente:\n` +
+          `✅ ${result.data.processed} operaciones procesadas\n` +
+          `${action === 'updated' ? '🔄 Operación actualizada' : '➕ Nueva operación creada'}\n` +
+          `${eliminadas > 0 ? `🗑️ ${eliminadas} operaciones eliminadas\n` : ''}` +
+          `👤 Cliente detectado: ${operations[0]?.cliente || 'N/A'}\n` +
+          `💰 Valor: $${operations[0]?.valor_total?.toLocaleString() || 'N/A'} ${operations[0]?.moneda || ''}\n` +
+          `💸 ${girosTotales} giros extraídos\n` +
+          `📈 ${liberacionesTotales} liberaciones detectadas\n` +
+          `🎯 Sync inteligente funcionando perfectamente!`
+        );
+        
+        // Refresh data to show new test record
+        setTimeout(() => {
+          refreshCSVData();
+          refreshOperations();
+        }, 1000);
+        
+        setTimeout(() => {
+          setUploadStatus(null);
+        }, 10000);
+      } else {
+        throw new Error(result.message || 'Error en el test del parser');
+      }
+
+    } catch (error) {
+      console.error('❌ Error testing parser:', error);
+      setUploadError(error instanceof Error ? error.message : 'Error desconocido probando parser');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // CSV Upload function
+  const handleCSVUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.name.endsWith('.csv')) {
+      setUploadError('Por favor selecciona un archivo CSV válido');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadStatus('Subiendo archivo...');
+
+    try {
+      // Read file content as text
+      const csvContent = await file.text();
+      
+      console.log(`📤 Subiendo archivo CSV para ${selectedCountry}:`, file.name);
+      console.log(`📄 Contenido CSV: ${csvContent.length} caracteres`);
+
+      // Upload to Supabase Edge Function with new parser as JSON
+      const response = await fetch(`${environment.apiBaseUrl}/upload-csv-with-parser`, {
+        method: 'POST',
+        headers: {
+          ...supabaseHeaders,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          csvContent: csvContent,
+          country: selectedCountry,
+          fileName: file.name
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error HTTP ${response.status}: ${errorData}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Detailed success message with parser results
+        const operations = result.data?.operations || [];
+        const girosTotales = operations.reduce((sum: number, op: any) => sum + (op.giros_count || 0), 0);
+        const liberacionesTotales = operations.reduce((sum: number, op: any) => sum + (op.liberaciones_count || 0), 0);
+        const creadas = result.data?.created || 0;
+        const actualizadas = result.data?.updated || 0;
+        const eliminadas = result.data?.deleted || 0;
+        const mockEliminadas = result.data?.deletedMock || 0;
+        const obsoletasEliminadas = result.data?.deletedObsolete || 0;
+        
+        let eliminadasMsg = '';
+        if (eliminadas > 0) {
+          if (mockEliminadas > 0 && obsoletasEliminadas > 0) {
+            eliminadasMsg = `🗑️ ${eliminadas} eliminadas (${mockEliminadas} mock + ${obsoletasEliminadas} obsoletas)\n`;
+          } else if (mockEliminadas > 0) {
+            eliminadasMsg = `🧹 ${mockEliminadas} operaciones mock limpiadas\n`;
+          } else {
+            eliminadasMsg = `🗑️ ${eliminadas} operaciones eliminadas (ya no en CSV)\n`;
+          }
+        }
+        
+        setUploadStatus(
+          `✅ Sync completo con TU parser original:\n` +
+          `📊 ${result.data.processed} operaciones procesadas de ${result.data.total} registros\n` +
+          `➕ ${creadas} operaciones nuevas creadas\n` +
+          `🔄 ${actualizadas} operaciones existentes actualizadas\n` +
+          eliminadasMsg +
+          `💸 ${girosTotales} giros extraídos\n` +
+          `📈 ${liberacionesTotales} liberaciones detectadas\n` +
+          `🔧 Fuente: ${result.metadata?.source || 'N/A'}`
+        );
+        
+        // Refresh data after successful upload
+        setTimeout(() => {
+          refreshCSVData();
+          refreshOperations();
+        }, 1000);
+        
+        // Clear status after 8 seconds (más tiempo para leer los detalles)
+        setTimeout(() => {
+          setUploadStatus(null);
+        }, 8000);
+      } else {
+        throw new Error(result.message || 'Error procesando el archivo');
+      }
+
+    } catch (error) {
+      console.error('❌ Error uploading CSV:', error);
+      setUploadError(error instanceof Error ? error.message : 'Error desconocido subiendo archivo');
+    } finally {
+      setIsUploading(false);
+      
+      // Clear file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Toggle row expansion
   const toggleRowExpansion = (rowIndex: number) => {
@@ -222,11 +435,51 @@ export default function FKCSVDataViewer({ className }: FKCSVDataViewerProps) {
             <RefreshCw className={cn("h-4 w-4", isLoadingOperations && "animate-spin")} />
             Refrescar Operaciones
           </button>
+          
+          {/* Test Parser Button */}
+          <button
+            onClick={testParserWithSampleData}
+            disabled={isUploading}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <FileText className="h-4 w-4" />
+            Probar Parser
+          </button>
+
+          {/* CSV Upload Button - DESHABILITADO: Usar Admin Dashboard */}
+          <div className="relative opacity-50">
+            <button
+              disabled={true}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed"
+            >
+              <Upload className="h-4 w-4" />
+              Subir desde Admin Dashboard
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Backend Status */}
       <FKBackendStatus showDetails={true} className="mb-6" />
+
+      {/* Upload Status Messages */}
+      {uploadStatus && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-green-800 font-medium">
+            <CheckCircle className="h-5 w-5" />
+            {uploadStatus}
+          </div>
+        </div>
+      )}
+
+      {uploadError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 text-red-800 font-medium">
+            <AlertCircle className="h-5 w-5" />
+            Error de Upload: {uploadError}
+          </div>
+        </div>
+      )}
 
       {/* Error Messages */}
       {(csvError || operationsError) && (

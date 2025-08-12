@@ -25,6 +25,7 @@ import {
 import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
 import { cn } from '../../utils/cn';
 import { useState, useMemo } from 'react';
+import { environment, supabaseHeaders } from '../../config/environment';
 
 // Timeline phases mapping
 const TIMELINE_PHASES = [
@@ -240,25 +241,60 @@ export default function FKAdminDashboard() {
     setUploadResult(null);
 
     try {
-      const formData = new FormData();
-      formData.append('csvFile', file);
+      // Read file content as text (same as FKCSVDataViewer)
+      const csvContent = await file.text();
+      
+      console.log(`📤 Admin subiendo CSV para ${selectedCountry}:`, file.name);
+      console.log(`📄 Contenido CSV: ${csvContent.length} caracteres`);
 
-      const response = await fetch(`http://localhost:3001/api/admin/upload-country-csv/${selectedCountry}`, {
+      // Use Supabase Edge Function with parser
+      const response = await fetch(`${environment.apiBaseUrl}/upload-csv-with-parser`, {
         method: 'POST',
-        body: formData,
         headers: {
-          'x-admin-key': 'admin-dev-key' // Para desarrollo
-        }
+          ...supabaseHeaders,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          csvContent: csvContent,
+          country: selectedCountry,
+          fileName: file.name
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`Error HTTP ${response.status}: ${errorData}`);
+      }
 
       const result = await response.json();
 
       if (result.success) {
         const countryName = selectedCountry === 'CO' ? 'Colombia' : 'México';
+        const operations = result.data?.operations || [];
+        const girosTotales = operations.reduce((sum: number, op: any) => sum + (op.giros_count || 0), 0);
+        const liberacionesTotales = operations.reduce((sum: number, op: any) => sum + (op.liberaciones_count || 0), 0);
+        const creadas = result.data?.created || 0;
+        const actualizadas = result.data?.updated || 0;
+        const eliminadas = result.data?.deleted || 0;
+        
         setUploadResult({
           success: true,
-          message: `${result.message} (${countryName})`,
-          summary: result.data?.summary
+          message: `✅ Sync completo con parser original (${countryName}):\n` +
+                   `📊 ${result.data.processed} operaciones procesadas de ${result.data.total} registros\n` +
+                   `➕ ${creadas} operaciones nuevas creadas\n` +
+                   `🔄 ${actualizadas} operaciones existentes actualizadas\n` +
+                   `🗑️ ${eliminadas} operaciones eliminadas (ya no en CSV)\n` +
+                   `💸 ${girosTotales} giros extraídos\n` +
+                   `📈 ${liberacionesTotales} liberaciones detectadas`,
+          summary: {
+            processed: result.data.processed,
+            created: creadas,
+            updated: actualizadas,
+            deleted: eliminadas,
+            total: result.data.total,
+            giros: girosTotales,
+            liberaciones: liberacionesTotales
+          }
         });
         
         // Refrescar datos después de upload exitoso
@@ -266,10 +302,7 @@ export default function FKAdminDashboard() {
           refetch();
         }, 1000);
       } else {
-        setUploadResult({
-          success: false,
-          message: result.message || 'Error subiendo el archivo CSV',
-        });
+        throw new Error(result.message || 'Error procesando el archivo');
       }
     } catch (error) {
       console.error('Error uploading CSV:', error);
