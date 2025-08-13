@@ -142,7 +142,8 @@ export default function FKAdminDashboard() {
         op.clientName.toLowerCase().includes(term) ||
         op.providerName.toLowerCase().includes(term) ||
         op.clientNit.toLowerCase().includes(term) ||
-        op.assignedPerson.toLowerCase().includes(term)
+        op.assignedPerson.toLowerCase().includes(term) ||
+        op.operationId.toLowerCase().includes(term)
       );
     }
     
@@ -472,7 +473,7 @@ export default function FKAdminDashboard() {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por cliente, proveedor, RFC/NIT o persona asignada..."
+                placeholder="Buscar por ID operación, cliente, proveedor, RFC/NIT o persona asignada..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
@@ -592,7 +593,7 @@ export default function FKAdminDashboard() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
                     Cliente / RFC-NIT
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
@@ -617,7 +618,10 @@ export default function FKAdminDashboard() {
                   <tr key={operation.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-medium text-gray-900">{operation.clientName}</p>
+                        <div>
+                          <p className="font-medium text-gray-900">{operation.clientName}</p>
+                          <p className="text-xs text-gray-500">Cliente extraído del parser</p>
+                        </div>
                         <p className="text-sm text-gray-600">
                           {(() => {
                             const cleanNit = operation.clientNit.trim().toUpperCase();

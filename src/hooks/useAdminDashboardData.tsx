@@ -144,7 +144,8 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
       // Map backend data to frontend structure
       const mappedOperations = rawOperations.map((op: any) => ({
         id: op.id,
-        clientName: op.clienteCompleto || op.clientName || 'Sin nombre',
+        operationId: op.operacionId || 'Sin ID',  // ID único de la operación
+        clientName: op.clienteCompleto || op.clientName || 'Sin nombre',  // Nombre real del cliente del parser
         clientNit: op.clienteNit || 'Sin NIT',
         providerName: op.proveedorBeneficiario || op.providerName || 'Sin proveedor',
         totalValue: formatCurrency(op.valorTotal || 0, op.moneda || 'USD'),

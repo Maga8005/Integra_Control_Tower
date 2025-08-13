@@ -165,19 +165,11 @@ export default function FKOperationDetail({
             )}
             <div className="text-gray-600 mt-1">
               <span>Proveedor: {operation.proveedorBeneficiario}</span>
-              <span className="text-gray-500"> • ID: {operation.id}</span>
             </div>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigator.clipboard.writeText(operation.id)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Copiar ID"
-          >
-            <Copy className="h-5 w-5 text-gray-600" />
-          </button>
           <button
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             title="Compartir"
