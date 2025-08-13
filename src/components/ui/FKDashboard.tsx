@@ -522,23 +522,23 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
       <div className="p-4 space-y-3">
         {/* Essential Fields Grid */}
         <div className="space-y-2 text-sm">
-          {/* Valor Operación - PRIMERO Y MÁS PROMINENTE */}
+          {/* Valor Total Operación - PRIMERO Y MÁS PROMINENTE */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600 font-medium">Valor Total:</span>
+            <span className="font-bold text-primary-600 text-base">
+              {operation.totalValue}
+            </span>
+          </div>
+
+          {/* Valor Compra Mercancía - Segundo */}
           {operation.operationValue && (
             <div className="flex items-center justify-between">
-              <span className="text-gray-600 font-medium">Valor Total:</span>
-              <span className="font-bold text-primary-600 text-base">
+              <span className="text-gray-500 text-xs">Valor Compra:</span>
+              <span className="text-gray-700 text-xs">
                 {operation.operationValue}
               </span>
             </div>
           )}
-
-          {/* Valor Compra - Segundo */}
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500 text-xs">Valor Compra:</span>
-            <span className="text-gray-700 text-xs">
-              {operation.totalValue}
-            </span>
-          </div>
 
           {/* Ruta Comercial */}
           <div className="flex items-center justify-between">

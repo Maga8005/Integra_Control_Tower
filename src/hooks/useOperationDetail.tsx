@@ -120,9 +120,9 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
       setIsLoading(true);
       setError(null);
 
-      // Use the Supabase Edge Function for operation detail
-      const url = `${environment.apiBaseUrl}/operation-detail?id=${operationId}`;
-      console.log(`📞 Llamando a: ${url}`);
+      // Use the admin-dashboard function and filter by operation ID
+      const url = `${environment.apiBaseUrl}/admin-dashboard`;
+      console.log(`📞 Llamando a: ${url} (filtrando por ID: ${operationId})`);
       
       const response = await fetch(url, {
         headers: supabaseHeaders
@@ -136,33 +136,118 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
         throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data: OperationDetailResponse = await response.json();
+      const data = await response.json();
       
       if (!data.success) {
         throw new Error(data.message || 'Error obteniendo detalles de operación');
       }
 
-      const operation = data.data;
+      // Filter operations to find the specific one
+      const operations = data.data?.operations || [];
+      const foundOperation = operations.find((op: any) => op.id === operationId);
       
-      console.log('📄 Datos de operación recibidos:', {
-        operationId: operation.id,
-        clientName: operation.clienteCompleto,
-        incoterms: operation.incoterms,
-        liberaciones: operation.liberaciones?.length || 0,
-        hasTimeline: !!operation.timeline
+      if (!foundOperation) {
+        throw new Error(`Operación con ID ${operationId} no encontrada`);
+      }
+
+      console.log('📄 Operación encontrada:', {
+        operationId: foundOperation.id,
+        clientName: foundOperation.clienteCompleto,
+        totalPagos: foundOperation.totalPagos,
+        numeroGiros: foundOperation.numeroGiros,
+        numeroEntregas: foundOperation.numeroEntregas
       });
 
-      console.log('✅ Operación procesada correctamente:', {
-        id: operation.id,
-        cliente: operation.clienteCompleto,
-        proveedor: operation.proveedorBeneficiario,
-        progress: operation.progresoGeneral,
-        hasTimeline: !!operation.timeline,
-        incoterms: operation.incoterms,
-        liberacionesCount: operation.liberaciones?.length || 0
-      });
+      // Map the operation data to match the expected interface
+      const mappedOperation: BackendOperationDetail = {
+        id: foundOperation.id,
+        numeroOperacion: foundOperation.operacionId || foundOperation.id,
+        clienteCompleto: foundOperation.clienteCompleto,
+        clienteNit: foundOperation.clienteNit,
+        tipoEmpresa: 'Importador', // Default value
+        proveedorBeneficiario: foundOperation.proveedorBeneficiario,
+        paisProveedor: foundOperation.paisExportador,
+        valorTotal: foundOperation.valorTotal,
+        valorOperacion: foundOperation.valorOperacion || foundOperation.valorTotal,
+        moneda: foundOperation.moneda || foundOperation.monedaPago,
+        progresoGeneral: foundOperation.progresoGeneral,
+        personaAsignada: foundOperation.personaAsignada,
+        paisExportador: foundOperation.paisExportador,
+        paisImportador: foundOperation.paisImportador,
+        rutaComercial: foundOperation.rutaComercial,
+        incoterms: `${foundOperation.incotermCompra || ''} / ${foundOperation.incotermVenta || ''}`.trim(),
+        montoTotal: foundOperation.valorTotal,
+        montosLiberados: foundOperation.totalEntregas || 0,
+        montosPendientes: (foundOperation.valorTotal || 0) - (foundOperation.totalEntregas || 0),
+        extracostos: {
+          comisionBancaria: 0,
+          gastosLogisticos: 0,
+          seguroCarga: 0,
+          totalExtracostos: 0
+        },
+        estados: {
+          general: foundOperation.progresoGeneral > 80 ? 'completado' : 'en_proceso'
+        },
+        // Map pagos to giros format for compatibility
+        giros: (foundOperation.pagosProveedores || []).map((pago: any) => ({
+          valorSolicitado: pago.valor_pagado,
+          numeroGiro: pago.numero_pago,
+          porcentajeGiro: pago.porcentaje_pago,
+          estado: pago.estado,
+          fechaVencimiento: pago.created_at
+        })),
+        // Map entregas to liberaciones format for compatibility  
+        liberaciones: (foundOperation.entregasClientes || []).map((entrega: any) => ({
+          numero: entrega.numero_entrega,
+          capital: entrega.capital,
+          fecha: entrega.fecha_entrega,
+          estado: entrega.estado
+        })),
+        timeline: foundOperation.timeline || [],
+        fechaCreacion: foundOperation.createdAt,
+        ultimaActualizacion: foundOperation.ultimaActualizacion,
+        datosBancarios: foundOperation.bancosProveedores ? {
+          beneficiario: foundOperation.bancosProveedores.nombre_beneficiario,
+          banco: foundOperation.bancosProveedores.nombre_banco,
+          direccion: '',
+          numeroCuenta: foundOperation.bancosProveedores.numero_cuenta,
+          swift: foundOperation.bancosProveedores.swift,
+          paisBanco: foundOperation.bancosProveedores.provincia_estado || ''
+        } : {
+          beneficiario: '',
+          banco: '',
+          direccion: '',
+          numeroCuenta: '',
+          swift: '',
+          paisBanco: ''
+        },
+        // New normalized data
+        pagosProveedores: foundOperation.pagosProveedores || [],
+        entregasClientes: foundOperation.entregasClientes || [],
+        bancosProveedores: foundOperation.bancosProveedores,
+        totalPagos: foundOperation.totalPagos || 0,
+        totalEntregas: foundOperation.totalEntregas || 0,
+        numeroGiros: foundOperation.numeroGiros || 0,
+        numeroEntregas: foundOperation.numeroEntregas || 0,
+        terminosPago: foundOperation.terminosPago,
+        inconvenientes: foundOperation.inconvenientes,
+        descripcionInconvenientes: foundOperation.descripcionInconvenientes,
+        nps: foundOperation.nps,
+        observaciones: foundOperation.observaciones,
+        preciseProgress: {
+          currentPhase: Math.floor((foundOperation.progresoGeneral || 0) / 20),
+          nextPhase: foundOperation.progresoGeneral >= 100 ? null : Math.floor((foundOperation.progresoGeneral || 0) / 20) + 1,
+          phaseDetails: []
+        },
+        validation: {
+          isValid: true,
+          warnings: [],
+          errors: [],
+          suggestions: []
+        }
+      };
 
-      setOperation(operation);
+      setOperation(mappedOperation);
 
     } catch (err) {
       console.error('❌ Error obteniendo detalles de operación:', {

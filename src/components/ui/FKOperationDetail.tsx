@@ -341,17 +341,17 @@ function OverviewTab({ operation, onStatusUpdate }: OverviewTabProps) {
           <div>
             <h5 className="font-medium text-gray-700 mb-2">Valores Financieros</h5>
             <div className="space-y-2">
-              {/* Valor Operación - PRIMERO Y MÁS PROMINENTE */}
+              {/* Valor Total Operación - PRIMERO Y MÁS PROMINENTE */}
               <div>
                 <p className="text-2xl font-bold text-primary-600">
-                  ${operation.valorOperacion?.toLocaleString()} {operation.moneda}
+                  ${operation.valorTotal?.toLocaleString()} {operation.moneda}
                 </p>
                 <p className="text-sm text-gray-600 font-medium">Valor Total Operación</p>
               </div>
-              {/* Valor Compra - Segundo */}
+              {/* Valor Compra Mercancía - Segundo */}
               <div>
                 <p className="text-lg font-semibold text-gray-700">
-                  ${operation.valorTotal?.toLocaleString()} {operation.moneda}
+                  ${operation.valorOperacion?.toLocaleString() || '-'} {operation.valorOperacion ? operation.moneda : ''}
                 </p>
                 <p className="text-xs text-gray-500">Valor compra mercancía</p>
               </div>

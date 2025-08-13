@@ -620,7 +620,6 @@ export default function FKAdminDashboard() {
                       <div>
                         <div>
                           <p className="font-medium text-gray-900">{operation.clientName}</p>
-                          <p className="text-xs text-gray-500">Cliente extraído del parser</p>
                         </div>
                         <p className="text-sm text-gray-600">
                           {(() => {
@@ -638,20 +637,20 @@ export default function FKAdminDashboard() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        {/* Valor Operación - PRIMERO Y MÁS PROMINENTE */}
+                        {/* Valor Total - PRIMERO Y MÁS PROMINENTE */}
+                        <div>
+                          <p className="font-bold text-primary-600 text-base whitespace-nowrap">
+                            {operation.totalValue}
+                          </p>
+                          <p className="text-xs text-gray-500">Valor Total</p>
+                        </div>
+                        {/* Valor Compra - Más pequeño */}
                         {operation.operationValue && (
                           <div>
-                            <p className="font-bold text-primary-600 text-base whitespace-nowrap">
-                              {operation.operationValue}
-                            </p>
-                            <p className="text-xs text-gray-500">Valor Total</p>
+                            <p className="text-sm text-gray-700 whitespace-nowrap">{operation.operationValue}</p>
+                            <p className="text-xs text-gray-400">Valor compra</p>
                           </div>
                         )}
-                        {/* Valor Compra - Más pequeño */}
-                        <div>
-                          <p className="text-sm text-gray-700 whitespace-nowrap">{operation.totalValue}</p>
-                          <p className="text-xs text-gray-400">Valor compra</p>
-                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">

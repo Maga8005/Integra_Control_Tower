@@ -38,10 +38,10 @@ export interface BackendOperationCard {
   clientName: string;
   clientNit: string;
   providerName: string;      // NUEVO: Nombre del proveedor internacional
-  totalValue: string;        // Formato: "$75,000 USD" - Valor compra mercancía
-  totalValueNumeric: number; // NUEVO: Valor numérico para cálculos - Valor compra mercancía
-  operationValue?: string;   // NUEVO: Valor total de la operación (formato: "$75,000 USD")
-  operationValueNumeric?: number; // NUEVO: Valor operación numérico para cálculos
+  totalValue: string;        // Formato: "$75,000 USD" - Valor total operación (más grande)
+  totalValueNumeric: number; // NUEVO: Valor numérico para cálculos - Valor total operación
+  operationValue?: string;   // NUEVO: Valor compra mercancía (formato: "$75,000 USD" o "-" si no existe)
+  operationValueNumeric?: number; // NUEVO: Valor compra mercancía numérico para cálculos
   route: string;
   assignedPerson: string;
   progress: number;
@@ -100,6 +100,8 @@ function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
       }
     }
     
+    console.log(`🔍 [FRONTEND] Operación ${op.id}: valorTotal=${op.valorTotal}, valorOperacion=${op.valorOperacion}`)
+    
     return {
       id: op.id,
       clientName: op.clienteCompleto,
@@ -107,7 +109,7 @@ function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
       providerName: op.proveedorBeneficiario || 'Proveedor no especificado',
       totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
       totalValueNumeric: op.valorTotal || 0,
-      operationValue: `$${op.valorOperacion?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
+      operationValue: op.valorOperacion ? `$${op.valorOperacion.toLocaleString()} ${op.moneda || 'USD'}` : '-',
       operationValueNumeric: op.valorOperacion || 0,
       route: op.rutaComercial || 'Ruta no especificada',
       assignedPerson: op.personaAsignada || 'No asignado',
@@ -297,7 +299,7 @@ export function useDashboardData(): UseDashboardDataReturn {
           providerName: op.proveedorBeneficiario,
           totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
           totalValueNumeric: op.valorTotal || 0,
-          operationValue: `$${op.valorOperacion?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
+          operationValue: op.valorOperacion ? `$${op.valorOperacion.toLocaleString()} ${op.moneda || 'USD'}` : '-',
           operationValueNumeric: op.valorOperacion || 0,
           route: op.rutaComercial || 'Ruta no especificada',
           assignedPerson: op.personaAsignada || 'No asignado',
