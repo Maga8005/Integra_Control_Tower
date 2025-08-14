@@ -120,35 +120,46 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
       setIsLoading(true);
       setError(null);
 
-      // Use the admin-dashboard function and filter by operation ID
-      const url = `${environment.apiBaseUrl}/admin-dashboard`;
-      console.log(`📞 Llamando a: ${url} (filtrando por ID: ${operationId})`);
+      // Try to find operation in both countries (Colombia first, then Mexico)
+      let foundOperation = null;
+      let searchedCountries = [];
+
+      // First try Colombia
+      console.log(`📞 Buscando operación en Colombia...`);
+      let url = `${environment.apiBaseUrl}/admin-dashboard?country=CO`;
+      let response = await fetch(url, { headers: supabaseHeaders });
       
-      const response = await fetch(url, {
-        headers: supabaseHeaders
-      });
-      console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Operación no encontrada');
+      if (response.ok) {
+        const coData = await response.json();
+        if (coData.success) {
+          const coOperations = coData.data?.operations || [];
+          foundOperation = coOperations.find((op: any) => op.id === operationId);
+          searchedCountries.push('Colombia');
         }
-        throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.message || 'Error obteniendo detalles de operación');
-      }
-
-      // Filter operations to find the specific one
-      const operations = data.data?.operations || [];
-      const foundOperation = operations.find((op: any) => op.id === operationId);
-      
+      // If not found in Colombia, try Mexico
       if (!foundOperation) {
+        console.log(`📞 Operación no encontrada en Colombia, buscando en México...`);
+        url = `${environment.apiBaseUrl}/admin-dashboard?country=MX`;
+        response = await fetch(url, { headers: supabaseHeaders });
+        
+        if (response.ok) {
+          const mxData = await response.json();
+          if (mxData.success) {
+            const mxOperations = mxData.data?.operations || [];
+            foundOperation = mxOperations.find((op: any) => op.id === operationId);
+            searchedCountries.push('México');
+          }
+        }
+      }
+
+      if (!foundOperation) {
+        console.log(`❌ Operación no encontrada en ningún país:`, { operationId, searchedCountries });
         throw new Error(`Operación con ID ${operationId} no encontrada`);
       }
+
+      console.log(`✅ Operación encontrada en: ${foundOperation.paisImportador || 'País no especificado'}`)
 
       console.log('📄 Operación encontrada:', {
         operationId: foundOperation.id,
