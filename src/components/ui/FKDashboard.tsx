@@ -49,7 +49,27 @@ const STATUS_CONFIG = {
   }
 } as const;
 
+// Nueva configuración de fases del timeline
+const PHASE_CONFIG = {
+  'Solicitud enviada': {
+    label: 'Solicitud enviada',
+    color: 'bg-blue-100 text-blue-600 border-blue-200',
+    icon: FileText
+  },
+  'Estado negociación': {
+    label: 'Estado negociación', 
+    color: 'bg-orange-100 text-orange-600 border-orange-200',
+    icon: User
+  },
+  'Procesamiento de Pago a Proveedor': {
+    label: 'Procesamiento de Pago',
+    color: 'bg-green-100 text-green-600 border-green-200', 
+    icon: CreditCard
+  }
+} as const;
+
 type BackendStatus = 'draft' | 'in-progress' | 'completed' | 'on-hold';
+type TimelinePhase = keyof typeof PHASE_CONFIG;
 
 interface FKDashboardProps {
   className?: string;
@@ -60,15 +80,17 @@ export default function FKDashboard({ className }: FKDashboardProps) {
   const { resetWelcomeState, hasExistingOperations, isNewUser } = useNewUser();
   const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState<BackendStatus | 'all'>('all');
+  const [selectedPhase, setSelectedPhase] = useState<string | 'all'>('all');
   
   // Usar el hook personalizado para obtener datos del backend
   const { operations, isLoading, error, metadata, refetch } = useDashboardData();
 
-  // Filter operations based on status
+  // Filter operations based on status and phase
   const filteredOperations = useMemo(() => {
     console.log('🔍 Filtrando operaciones:', {
       operationsCount: operations?.length || 0,
       selectedStatus,
+      selectedPhase,
       operations: operations?.map(op => ({ id: op.id, status: op.status, client: op.clientName }))
     });
     
@@ -86,6 +108,16 @@ export default function FKDashboard({ className }: FKDashboardProps) {
       console.log(`🔍 Filtro por status "${selectedStatus}": ${beforeFilter} → ${filtered.length}`);
     }
 
+    // Phase filtering
+    if (selectedPhase !== 'all') {
+      const beforeFilter = filtered.length;
+      filtered = filtered.filter(op => {
+        const lastCompletedPhase = getLastCompletedTimelinePhase(op);
+        return lastCompletedPhase === selectedPhase;
+      });
+      console.log(`🔍 Filtro por fase "${selectedPhase}": ${beforeFilter} → ${filtered.length}`);
+    }
+
     // Sort by status priority and then by date
     const sorted = filtered.sort((a, b) => {
       const priorityDiff = STATUS_CONFIG[a.status].priority - STATUS_CONFIG[b.status].priority;
@@ -100,7 +132,7 @@ export default function FKDashboard({ className }: FKDashboardProps) {
     
     console.log('✅ Operaciones filtradas y ordenadas:', sorted.length);
     return sorted;
-  }, [operations, selectedStatus]);
+  }, [operations, selectedStatus, selectedPhase]);
 
   // Calculate dashboard statistics from backend data
   const dashboardStats = useMemo((): DashboardStats => {
@@ -198,6 +230,41 @@ export default function FKDashboard({ className }: FKDashboardProps) {
       </div>
     );
   }
+
+  // Función para obtener la última fase completada del timeline
+  const getLastCompletedTimelinePhase = (operation: any): string | null => {
+    if (!operation.timeline?.states || operation.timeline.states.length === 0) {
+      return null;
+    }
+    
+    const completedStates = operation.timeline.states.filter((state: any) => state.status === 'completed');
+    if (completedStates.length === 0) {
+      return null;
+    }
+    
+    return completedStates[completedStates.length - 1]?.name || null;
+  };
+
+  // Get phase counts from backend data
+  const phaseCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: operations.length
+    };
+
+    // Initialize phase counts
+    Object.keys(PHASE_CONFIG).forEach(phase => {
+      counts[phase] = 0;
+    });
+
+    operations.forEach(op => {
+      const lastCompletedPhase = getLastCompletedTimelinePhase(op);
+      if (lastCompletedPhase && counts[lastCompletedPhase] !== undefined) {
+        counts[lastCompletedPhase]++;
+      }
+    });
+
+    return counts;
+  }, [operations]);
 
   return (
     <div className={cn("p-6 space-y-6", className)}>
@@ -344,37 +411,76 @@ export default function FKDashboard({ className }: FKDashboardProps) {
         </div>
       </div>
 
-      {/* Status Filters */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Filtrar por Estado</h3>
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => setSelectedStatus('all')}
-            className={cn(
-              "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
-              selectedStatus === 'all'
-                ? "bg-primary-600 text-white border-primary-600"
-                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-            )}
-          >
-            Todas ({statusCounts.all})
-          </button>
-          {(Object.entries(STATUS_CONFIG) as [BackendStatus, typeof STATUS_CONFIG[BackendStatus]][]).map(([status, config]) => {
-            return (
-              <button
-                key={status}
-                onClick={() => setSelectedStatus(status)}
-                className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
-                  selectedStatus === status
-                    ? "bg-primary-600 text-white border-primary-600"
-                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                )}
-              >
-                {config.label} ({statusCounts[status]})
-              </button>
-            );
-          })}
+      {/* Filters */}
+      <div className="space-y-4">
+        {/* Status Filters */}
+        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filtrar por Estado</h3>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setSelectedStatus('all')}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+                selectedStatus === 'all'
+                  ? "bg-primary-600 text-white border-primary-600"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              Todas ({statusCounts.all})
+            </button>
+            {(Object.entries(STATUS_CONFIG) as [BackendStatus, typeof STATUS_CONFIG[BackendStatus]][]).map(([status, config]) => {
+              return (
+                <button
+                  key={status}
+                  onClick={() => setSelectedStatus(status)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+                    selectedStatus === status
+                      ? "bg-primary-600 text-white border-primary-600"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  )}
+                >
+                  {config.label} ({statusCounts[status]})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Phase Filters */}
+        <div className="bg-white rounded-lg p-6 border border-gray-200 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Filtrar por Fase</h3>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setSelectedPhase('all')}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors border",
+                selectedPhase === 'all'
+                  ? "bg-primary-600 text-white border-primary-600"
+                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+              )}
+            >
+              Todas ({phaseCounts.all})
+            </button>
+            {(Object.entries(PHASE_CONFIG) as [TimelinePhase, typeof PHASE_CONFIG[TimelinePhase]][]).map(([phase, config]) => {
+              const PhaseIcon = config.icon;
+              return (
+                <button
+                  key={phase}
+                  onClick={() => setSelectedPhase(phase)}
+                  className={cn(
+                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors border flex items-center gap-2",
+                    selectedPhase === phase
+                      ? "bg-primary-600 text-white border-primary-600"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                  )}
+                >
+                  <PhaseIcon className="h-4 w-4" />
+                  {config.label} ({phaseCounts[phase] || 0})
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -382,7 +488,9 @@ export default function FKDashboard({ className }: FKDashboardProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">
-            Operaciones {selectedStatus !== 'all' && `- ${STATUS_CONFIG[selectedStatus as BackendStatus]?.label}`}
+            Operaciones 
+            {selectedStatus !== 'all' && `- ${STATUS_CONFIG[selectedStatus as BackendStatus]?.label}`}
+            {selectedPhase !== 'all' && ` - ${PHASE_CONFIG[selectedPhase as TimelinePhase]?.label}`}
           </h3>
           <span className="text-sm text-gray-500">
             {filteredOperations.length} operación{filteredOperations.length !== 1 ? 'es' : ''}
@@ -431,7 +539,6 @@ interface DashboardOperationCardProps {
 
 function DashboardOperationCard({ operation, onViewDetails }: DashboardOperationCardProps) {
   const statusConfig = STATUS_CONFIG[operation.status];
-  const StatusIcon = statusConfig.icon;
   
   // Función para obtener el último estado completado del timeline
   const getLastCompletedTimelineState = () => {
@@ -467,12 +574,34 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
   // Usar el último estado completado del timeline, sino currentPhaseName, sino el label del status config
   const displayLabel = lastCompletedState?.name || operation.currentPhaseName || statusConfig.label;
   
+  // Configuración del badge basada en la fase del timeline o status
+  const phaseConfig = lastCompletedState?.name && PHASE_CONFIG[lastCompletedState.name as TimelinePhase] 
+    ? PHASE_CONFIG[lastCompletedState.name as TimelinePhase]
+    : statusConfig;
+    
+  const BadgeIcon = phaseConfig.icon;
+  
   console.log('🏷️ DisplayLabel final para operación', operation.id, ':', {
     lastCompletedStateName: lastCompletedState?.name,
     currentPhaseName: operation.currentPhaseName,
     statusConfigLabel: statusConfig.label,
-    finalDisplayLabel: displayLabel
+    finalDisplayLabel: displayLabel,
+    usingPhaseConfig: !!phaseConfig
   });
+  
+  // Calcular progreso basado en timeline si está disponible
+  const calculateTimelineProgress = () => {
+    if (!operation.timeline?.states || operation.timeline.states.length === 0) {
+      return operation.progress || 0;
+    }
+    
+    const totalPhases = 3; // Solicitud enviada, Estado negociación, Procesamiento de Pago
+    const completedStates = operation.timeline.states.filter(state => state.status === 'completed');
+    
+    return Math.round((completedStates.length / totalPhases) * 100);
+  };
+  
+  const timelineProgress = calculateTimelineProgress();
 
   return (
     <div 
@@ -510,9 +639,9 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
           </div>
           <div className={cn(
             "px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1",
-            statusConfig.color
+            phaseConfig.color
           )}>
-            <StatusIcon className="h-3 w-3" />
+            <BadgeIcon className="h-3 w-3" />
             {displayLabel}
           </div>
         </div>
@@ -522,23 +651,23 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
       <div className="p-4 space-y-3">
         {/* Essential Fields Grid */}
         <div className="space-y-2 text-sm">
-          {/* Valor Operación - PRIMERO Y MÁS PROMINENTE */}
+          {/* Valor Total Operación - PRIMERO Y MÁS PROMINENTE */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600 font-medium">Valor Total:</span>
+            <span className="font-bold text-primary-600 text-base">
+              {operation.totalValue}
+            </span>
+          </div>
+
+          {/* Valor Compra Mercancía - Segundo */}
           {operation.operationValue && (
             <div className="flex items-center justify-between">
-              <span className="text-gray-600 font-medium">Valor Total:</span>
-              <span className="font-bold text-primary-600 text-base">
+              <span className="text-gray-500 text-xs">Valor Compra:</span>
+              <span className="text-gray-700 text-xs">
                 {operation.operationValue}
               </span>
             </div>
           )}
-
-          {/* Valor Compra - Segundo */}
-          <div className="flex items-center justify-between">
-            <span className="text-gray-500 text-xs">Valor Compra:</span>
-            <span className="text-gray-700 text-xs">
-              {operation.totalValue}
-            </span>
-          </div>
 
           {/* Ruta Comercial */}
           <div className="flex items-center justify-between">
@@ -571,15 +700,15 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
         <div className="pt-2">
           <div className="flex items-center justify-between text-sm mb-2">
             <span className="text-gray-600">Progreso</span>
-            <span className="font-semibold text-gray-900">{operation.progress}%</span>
+            <span className="font-semibold text-gray-900">{timelineProgress}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className={cn(
                 "h-2 rounded-full transition-all duration-300",
-                operation.progress === 100 ? "bg-success-500" : "bg-primary-600"
+                timelineProgress === 100 ? "bg-success-500" : "bg-primary-600"
               )}
-              style={{ width: `${Math.min(operation.progress, 100)}%` }}
+              style={{ width: `${Math.min(timelineProgress, 100)}%` }}
             />
           </div>
         </div>

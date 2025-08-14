@@ -165,19 +165,11 @@ export default function FKOperationDetail({
             )}
             <div className="text-gray-600 mt-1">
               <span>Proveedor: {operation.proveedorBeneficiario}</span>
-              <span className="text-gray-500"> • ID: {operation.id}</span>
             </div>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigator.clipboard.writeText(operation.id)}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Copiar ID"
-          >
-            <Copy className="h-5 w-5 text-gray-600" />
-          </button>
           <button
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             title="Compartir"
@@ -348,18 +340,21 @@ function OverviewTab({ operation, onStatusUpdate }: OverviewTabProps) {
           </div>
           <div>
             <h5 className="font-medium text-gray-700 mb-2">Valores Financieros</h5>
-            <div className="space-y-2">
-              {/* Valor Operación - PRIMERO Y MÁS PROMINENTE */}
+            <div className="space-y-3">
+              {/* Valor Total Operación - PRIMERO Y MÁS PROMINENTE */}
               <div>
-                <p className="text-2xl font-bold text-primary-600">
-                  ${operation.valorOperacion?.toLocaleString()} {operation.moneda}
+                <p className="text-2xl font-bold text-primary-600 break-words">
+                  ${operation.valorTotal?.toLocaleString() || '0'} {operation.moneda || 'USD'}
                 </p>
                 <p className="text-sm text-gray-600 font-medium">Valor Total Operación</p>
               </div>
-              {/* Valor Compra - Segundo */}
+              {/* Valor Compra Mercancía - Segundo */}
               <div>
-                <p className="text-lg font-semibold text-gray-700">
-                  ${operation.valorTotal?.toLocaleString()} {operation.moneda}
+                <p className="text-lg font-semibold text-gray-700 break-words">
+                  {operation.valorOperacion ? 
+                    `$${operation.valorOperacion.toLocaleString()} ${operation.moneda || 'USD'}` : 
+                    'No especificado'
+                  }
                 </p>
                 <p className="text-xs text-gray-500">Valor compra mercancía</p>
               </div>
@@ -460,31 +455,31 @@ function OverviewTab({ operation, onStatusUpdate }: OverviewTabProps) {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
             <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-2xl font-bold text-primary-700 mb-1">
-                ${operation.valorOperacion?.toLocaleString()}
+              <p className="text-xl md:text-2xl font-bold text-primary-700 mb-1 break-words">
+                ${operation.valorTotal?.toLocaleString() || '0'} {operation.moneda || 'USD'}
               </p>
-              <p className="text-sm text-primary-600 font-medium">Total Operación</p>
+              <p className="text-xs md:text-sm text-primary-600 font-medium leading-tight">Total Operación</p>
             </div>
             
             <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-2xl font-bold text-gray-800 mb-1">
-                ${operation.valorTotal?.toLocaleString()}
+              <p className="text-xl md:text-2xl font-bold text-gray-800 mb-1 break-words">
+                ${operation.valorOperacion?.toLocaleString() || '0'} {operation.valorOperacion ? (operation.moneda || 'USD') : ''}
               </p>
-              <p className="text-sm text-gray-600 font-medium">Compra Mercancía</p>
+              <p className="text-xs md:text-sm text-gray-600 font-medium leading-tight">Compra Mercancía</p>
             </div>
             
             <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-2xl font-bold text-success-600 mb-1">
-                ${operation.montosLiberados?.toLocaleString()}
+              <p className="text-xl md:text-2xl font-bold text-success-600 mb-1 break-words">
+                ${operation.montosLiberados?.toLocaleString() || '0'} {operation.montosLiberados ? (operation.moneda || 'USD') : ''}
               </p>
-              <p className="text-sm text-success-600 font-medium">Total Liberaciones</p>
+              <p className="text-xs md:text-sm text-success-600 font-medium leading-tight">Total Liberaciones</p>
             </div>
             
             <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-2xl font-bold text-coral-600 mb-1">
-                $0
+              <p className="text-xl md:text-2xl font-bold text-coral-600 mb-1 break-words">
+                $0 {operation.moneda || 'USD'}
               </p>
-              <p className="text-sm text-coral-600 font-medium">Extracostos</p>
+              <p className="text-xs md:text-sm text-coral-600 font-medium leading-tight">Extracostos</p>
           </div>
               
         </div>

@@ -120,49 +120,145 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
       setIsLoading(true);
       setError(null);
 
-      // Use the Supabase Edge Function for operation detail
-      const url = `${environment.apiBaseUrl}/operation-detail?id=${operationId}`;
-      console.log(`📞 Llamando a: ${url}`);
+      // Try to find operation in both countries (Colombia first, then Mexico)
+      let foundOperation = null;
+      let searchedCountries = [];
+
+      // First try Colombia
+      console.log(`📞 Buscando operación en Colombia...`);
+      let url = `${environment.apiBaseUrl}/admin-dashboard?country=CO`;
+      let response = await fetch(url, { headers: supabaseHeaders });
       
-      const response = await fetch(url, {
-        headers: supabaseHeaders
-      });
-      console.log(`📡 Respuesta: ${response.status} ${response.statusText}`);
-      
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('Operación no encontrada');
+      if (response.ok) {
+        const coData = await response.json();
+        if (coData.success) {
+          const coOperations = coData.data?.operations || [];
+          foundOperation = coOperations.find((op: any) => op.id === operationId);
+          searchedCountries.push('Colombia');
         }
-        throw new Error(`Error HTTP ${response.status}: ${response.statusText}`);
       }
 
-      const data: OperationDetailResponse = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.message || 'Error obteniendo detalles de operación');
+      // If not found in Colombia, try Mexico
+      if (!foundOperation) {
+        console.log(`📞 Operación no encontrada en Colombia, buscando en México...`);
+        url = `${environment.apiBaseUrl}/admin-dashboard?country=MX`;
+        response = await fetch(url, { headers: supabaseHeaders });
+        
+        if (response.ok) {
+          const mxData = await response.json();
+          if (mxData.success) {
+            const mxOperations = mxData.data?.operations || [];
+            foundOperation = mxOperations.find((op: any) => op.id === operationId);
+            searchedCountries.push('México');
+          }
+        }
       }
 
-      const operation = data.data;
-      
-      console.log('📄 Datos de operación recibidos:', {
-        operationId: operation.id,
-        clientName: operation.clienteCompleto,
-        incoterms: operation.incoterms,
-        liberaciones: operation.liberaciones?.length || 0,
-        hasTimeline: !!operation.timeline
+      if (!foundOperation) {
+        console.log(`❌ Operación no encontrada en ningún país:`, { operationId, searchedCountries });
+        throw new Error(`Operación con ID ${operationId} no encontrada`);
+      }
+
+      console.log(`✅ Operación encontrada en: ${foundOperation.paisImportador || 'País no especificado'}`)
+
+      console.log('📄 Operación encontrada:', {
+        operationId: foundOperation.id,
+        clientName: foundOperation.clienteCompleto,
+        totalPagos: foundOperation.totalPagos,
+        numeroGiros: foundOperation.numeroGiros,
+        numeroEntregas: foundOperation.numeroEntregas
       });
 
-      console.log('✅ Operación procesada correctamente:', {
-        id: operation.id,
-        cliente: operation.clienteCompleto,
-        proveedor: operation.proveedorBeneficiario,
-        progress: operation.progresoGeneral,
-        hasTimeline: !!operation.timeline,
-        incoterms: operation.incoterms,
-        liberacionesCount: operation.liberaciones?.length || 0
-      });
+      // Map the operation data to match the expected interface
+      const mappedOperation: BackendOperationDetail = {
+        id: foundOperation.id,
+        numeroOperacion: foundOperation.operacionId || foundOperation.id,
+        clienteCompleto: foundOperation.clienteCompleto,
+        clienteNit: foundOperation.clienteNit,
+        tipoEmpresa: 'Importador', // Default value
+        proveedorBeneficiario: foundOperation.proveedorBeneficiario,
+        paisProveedor: foundOperation.paisExportador,
+        valorTotal: foundOperation.valorTotal,
+        valorOperacion: foundOperation.valorOperacion || foundOperation.valorTotal,
+        moneda: foundOperation.moneda || foundOperation.monedaPago,
+        progresoGeneral: foundOperation.progresoGeneral,
+        personaAsignada: foundOperation.personaAsignada,
+        paisExportador: foundOperation.paisExportador,
+        paisImportador: foundOperation.paisImportador,
+        rutaComercial: foundOperation.rutaComercial,
+        incoterms: `${foundOperation.incotermCompra || ''} / ${foundOperation.incotermVenta || ''}`.trim(),
+        montoTotal: foundOperation.valorTotal,
+        montosLiberados: foundOperation.totalEntregas || 0,
+        montosPendientes: (foundOperation.valorTotal || 0) - (foundOperation.totalEntregas || 0),
+        extracostos: {
+          comisionBancaria: 0,
+          gastosLogisticos: 0,
+          seguroCarga: 0,
+          totalExtracostos: 0
+        },
+        estados: {
+          general: foundOperation.progresoGeneral > 80 ? 'completado' : 'en_proceso'
+        },
+        // Map pagos to giros format for compatibility
+        giros: (foundOperation.pagosProveedores || []).map((pago: any) => ({
+          valorSolicitado: pago.valor_pagado,
+          numeroGiro: pago.numero_pago,
+          porcentajeGiro: pago.porcentaje_pago,
+          estado: pago.estado,
+          fechaVencimiento: pago.created_at
+        })),
+        // Map entregas to liberaciones format for compatibility  
+        liberaciones: (foundOperation.entregasClientes || []).map((entrega: any) => ({
+          numero: entrega.numero_entrega,
+          capital: entrega.capital,
+          fecha: entrega.fecha_entrega,
+          estado: entrega.estado
+        })),
+        timeline: foundOperation.timeline || [],
+        fechaCreacion: foundOperation.createdAt,
+        ultimaActualizacion: foundOperation.ultimaActualizacion,
+        datosBancarios: foundOperation.bancosProveedores ? {
+          beneficiario: foundOperation.bancosProveedores.nombre_beneficiario,
+          banco: foundOperation.bancosProveedores.nombre_banco,
+          direccion: '',
+          numeroCuenta: foundOperation.bancosProveedores.numero_cuenta,
+          swift: foundOperation.bancosProveedores.swift,
+          paisBanco: foundOperation.bancosProveedores.provincia_estado || ''
+        } : {
+          beneficiario: '',
+          banco: '',
+          direccion: '',
+          numeroCuenta: '',
+          swift: '',
+          paisBanco: ''
+        },
+        // New normalized data
+        pagosProveedores: foundOperation.pagosProveedores || [],
+        entregasClientes: foundOperation.entregasClientes || [],
+        bancosProveedores: foundOperation.bancosProveedores,
+        totalPagos: foundOperation.totalPagos || 0,
+        totalEntregas: foundOperation.totalEntregas || 0,
+        numeroGiros: foundOperation.numeroGiros || 0,
+        numeroEntregas: foundOperation.numeroEntregas || 0,
+        terminosPago: foundOperation.terminosPago,
+        inconvenientes: foundOperation.inconvenientes,
+        descripcionInconvenientes: foundOperation.descripcionInconvenientes,
+        nps: foundOperation.nps,
+        observaciones: foundOperation.observaciones,
+        preciseProgress: {
+          currentPhase: Math.floor((foundOperation.progresoGeneral || 0) / 20),
+          nextPhase: foundOperation.progresoGeneral >= 100 ? null : Math.floor((foundOperation.progresoGeneral || 0) / 20) + 1,
+          phaseDetails: []
+        },
+        validation: {
+          isValid: true,
+          warnings: [],
+          errors: [],
+          suggestions: []
+        }
+      };
 
-      setOperation(operation);
+      setOperation(mappedOperation);
 
     } catch (err) {
       console.error('❌ Error obteniendo detalles de operación:', {

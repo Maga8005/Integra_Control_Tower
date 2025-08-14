@@ -58,7 +58,7 @@ export interface Liberacion {
   documentosRequeridos?: string[];
 }
 
-// Interface para datos bancarios
+// Interface para datos bancarios (tabla bancos_proveedores)
 export interface DatosBancarios {
   beneficiario: string;
   banco: string;
@@ -66,6 +66,59 @@ export interface DatosBancarios {
   numeroCuenta: string;
   swift: string;
   paisBanco: string;
+}
+
+// Interface para datos bancarios normalizados
+export interface BancoProveedor {
+  id: string;
+  proveedor_id: string;
+  nombre_banco: string;
+  numero_cuenta: string;
+  swift: string;
+  iban?: string;
+  nombre_beneficiario: string;
+  codigo_postal?: string;
+  provincia_estado?: string;
+  created_at: string;
+}
+
+// Interface para pagos a proveedores (tabla pagos_proveedores)
+export interface PagoProveedor {
+  id: string;
+  operacion_id: string;
+  valor_total_compra: number;
+  numero_pago: string;
+  valor_pagado: number;
+  porcentaje_pago: string;
+  estado: EstadoProceso;
+  created_at: string;
+}
+
+// Interface para entregas a clientes (tabla entrega_clientes)
+export interface EntregaCliente {
+  id: string;
+  operacion_id: string;
+  numero_entrega: number;
+  capital: number;
+  moneda: Currency;
+  fecha_entrega: string;
+  estado: EstadoProceso;
+  created_at: string;
+}
+
+// Interface para clientes (tabla clientes)
+export interface Cliente {
+  id: string;
+  nombre: string;
+  nit: string;
+  created_at: string;
+}
+
+// Interface para proveedores (tabla proveedores)
+export interface Proveedor {
+  id: string;
+  nombre: string;
+  created_at: string;
 }
 
 // Interface para extracostos
@@ -121,6 +174,7 @@ export interface Documento {
 export interface OperationDetail {
   // Identificadores únicos
   id: string;
+  operacionId?: string; // ID del CSV
   numeroOperacion: string;
   
   // Información Básica
@@ -130,7 +184,9 @@ export interface OperationDetail {
   proveedorBeneficiario: string;
   paisProveedor: string;
   valorTotal: number;
+  valorOperacion?: number; // Calculado
   moneda: Currency;
+  monedaPago: Currency;
   progresoGeneral: number;
   personaAsignada: string;
   
@@ -139,6 +195,9 @@ export interface OperationDetail {
   paisImportador: string;
   rutaComercial: string;
   incoterms: string;
+  incotermCompra?: string;
+  incotermVenta?: string;
+  terminosPago?: string;
   
   // Información Financiera
   montoTotal: number;
@@ -151,9 +210,20 @@ export interface OperationDetail {
   // Estados críticos
   estados: EstadosProceso;
   
-  // Giros y liberaciones
+  // Giros y liberaciones (legacy)
   giros: GiroInfo[];
   liberaciones: Liberacion[];
+  
+  // Datos de tablas normalizadas
+  pagosProveedores?: PagoProveedor[];
+  entregasClientes?: EntregaCliente[];
+  bancosProveedores?: BancoProveedor | null;
+  
+  // Estadísticas calculadas
+  totalPagos?: number;
+  totalEntregas?: number;
+  numeroGiros?: number;
+  numeroEntregas?: number;
   
   // Documentación
   documentos: Documento[];
@@ -161,12 +231,16 @@ export interface OperationDetail {
   // Timeline y metadatos
   timeline: TimelineEvent[];
   fechaCreacion: string;
+  createdAt?: string;
   ultimaActualizacion: string;
   
-  // Datos bancarios
+  // Datos bancarios (legacy)
   datosBancarios: DatosBancarios;
   
-  // Información adicional para MVP
+  // Información adicional
+  inconvenientes?: string;
+  descripcionInconvenientes?: string;
+  nps?: number;
   observaciones?: string;
   alertas?: Array<{
     tipo: 'warning' | 'error' | 'info';

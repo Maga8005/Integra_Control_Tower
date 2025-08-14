@@ -142,15 +142,27 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
       }
 
       // Map backend data to frontend structure
-      const mappedOperations = rawOperations.map((op: any) => ({
+      const mappedOperations = rawOperations.map((op: any) => {
+        console.log(`🔍 [ADMIN FRONTEND] Operación ${op.id}:`, {
+          id: op.id,
+          operacionId: op.operacionId,
+          clienteCompleto: op.clienteCompleto,
+          clienteNit: op.clienteNit,
+          proveedorBeneficiario: op.proveedorBeneficiario,
+          valorTotal: op.valorTotal,
+          valorOperacion: op.valorOperacion
+        });
+        
+        return {
         id: op.id,
-        clientName: op.clienteCompleto || op.clientName || 'Sin nombre',
+        operationId: op.operacionId || 'Sin ID',  // ID único de la operación
+        clientName: op.clienteCompleto || op.clientName || 'Sin nombre',  // Nombre real del cliente del parser
         clientNit: op.clienteNit || 'Sin NIT',
         providerName: op.proveedorBeneficiario || op.providerName || 'Sin proveedor',
         totalValue: formatCurrency(op.valorTotal || 0, op.moneda || 'USD'),
         totalValueNumeric: op.valorTotal || 0,
-        operationValue: formatCurrency(op.valorOperacion || op.valorTotal || 0, op.moneda || 'USD'),
-        operationValueNumeric: op.valorOperacion || op.valorTotal || 0,
+        operationValue: op.valorOperacion ? formatCurrency(op.valorOperacion, op.moneda || 'USD') : '-',
+        operationValueNumeric: op.valorOperacion || 0,
         route: op.rutaComercial || `${op.paisExportador || 'N/A'} → ${op.paisImportador || 'N/A'}`,
         assignedPerson: op.personaAsignada || 'Sin asignar',
         progress: op.progresoGeneral || op.progress || 0,
@@ -158,7 +170,8 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
         currentPhaseName: getCurrentPhaseName(op.timeline),
         timeline: mapTimeline(op.timeline),
         updatedAt: op.ultimaActualizacion || op.updatedAt
-      }));
+        }
+      });
 
       console.log('✅ [ADMIN] Datos procesados correctamente:', {
         operaciones: mappedOperations.length,
