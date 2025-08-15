@@ -87,12 +87,6 @@ export default function OperationDetail() {
               >
                 Panel de Control
               </button>
-              <button
-                onClick={() => navigate('/timeline')}
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Cronograma
-              </button>
               <a 
                 href="#" 
                 className="text-primary-600 hover:text-primary-700 px-3 py-2 rounded-md text-sm font-medium border-b-2 border-primary-600"

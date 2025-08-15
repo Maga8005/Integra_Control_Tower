@@ -72,6 +72,18 @@ export interface BackendOperationDetail {
     swift: string;
     paisBanco: string;
   };
+  // Additional fields that might be available directly from backend
+  bancosProveedores?: {
+    nombre_beneficiario: string;
+    nombre_banco: string;
+    numero_cuenta: string;
+    swift: string;
+    iban?: string;
+    codigo_postal?: string;
+    provincia_estado?: string;
+    direccion?: string;
+    pais?: string;
+  };
   observaciones: string;
   alertas: any[];
   preciseProgress: {
@@ -164,9 +176,8 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
       console.log('📄 Operación encontrada:', {
         operationId: foundOperation.id,
         clientName: foundOperation.clienteCompleto,
-        totalPagos: foundOperation.totalPagos,
-        numeroGiros: foundOperation.numeroGiros,
-        numeroEntregas: foundOperation.numeroEntregas
+        bancosProveedores: foundOperation.bancosProveedores,
+        hasBankingData: !!foundOperation.bancosProveedores
       });
 
       // Map the operation data to match the expected interface
@@ -232,19 +243,10 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
           swift: '',
           paisBanco: ''
         },
-        // New normalized data
-        pagosProveedores: foundOperation.pagosProveedores || [],
-        entregasClientes: foundOperation.entregasClientes || [],
+        // Pass through banking data directly from backend
         bancosProveedores: foundOperation.bancosProveedores,
-        totalPagos: foundOperation.totalPagos || 0,
-        totalEntregas: foundOperation.totalEntregas || 0,
-        numeroGiros: foundOperation.numeroGiros || 0,
-        numeroEntregas: foundOperation.numeroEntregas || 0,
-        terminosPago: foundOperation.terminosPago,
-        inconvenientes: foundOperation.inconvenientes,
-        descripcionInconvenientes: foundOperation.descripcionInconvenientes,
-        nps: foundOperation.nps,
-        observaciones: foundOperation.observaciones,
+        observaciones: foundOperation.observaciones || '',
+        alertas: [],
         preciseProgress: {
           currentPhase: Math.floor((foundOperation.progresoGeneral || 0) / 20),
           nextPhase: foundOperation.progresoGeneral >= 100 ? null : Math.floor((foundOperation.progresoGeneral || 0) / 20) + 1,

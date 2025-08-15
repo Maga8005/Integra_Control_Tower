@@ -19,7 +19,8 @@ import {
   Copy,
   Share2,
   MoreHorizontal,
-  RefreshCw
+  RefreshCw,
+  Landmark
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useOperationNotifications } from '../../hooks/useNotifications';
@@ -59,7 +60,7 @@ export default function FKOperationDetail({
 }: FKOperationDetailProps) {
   const { user, hasPermission } = useAuth();
   const { notifyOperationSuccess, notifyOperationError } = useOperationNotifications();
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'provider'>('overview');
 
   // Use optimized hook for single operation
   const { operation, isLoading, error, refetch } = useOperationDetail(operationId);
@@ -236,7 +237,8 @@ export default function FKOperationDetail({
           <nav className="flex space-x-8 px-6">
             {[
               { id: 'overview', label: 'Resumen', icon: Building },
-              { id: 'timeline', label: 'Cronograma', icon: Clock }
+              { id: 'timeline', label: 'Cronograma', icon: Clock },
+              { id: 'provider', label: 'Proveedor', icon: Landmark }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -265,6 +267,9 @@ export default function FKOperationDetail({
           )}
           {activeTab === 'timeline' && (
             <TimelineTab operation={operation} />
+          )}
+          {activeTab === 'provider' && (
+            <ProviderTab operation={operation} />
           )}
         </div>
       </div>
@@ -776,6 +781,288 @@ function TimelineTab({ operation }: TimelineTabProps) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Provider Tab Component  
+interface ProviderTabProps {
+  operation: BackendOperationDetail;
+}
+
+function ProviderTab({ operation }: ProviderTabProps) {
+  // Helper function to get bank information
+  const getBankInfo = () => {
+    console.log('🏦 DEBUG - Datos de operación completos:', operation);
+    console.log('🏦 DEBUG - datosBancarios:', operation.datosBancarios);
+    console.log('🏦 DEBUG - bancosProveedores:', (operation as any).bancosProveedores);
+    
+    // Try to get banking data from multiple sources
+    let bankData = null;
+    
+    // First check datosBancarios (mapped from backend)
+    if (operation.datosBancarios && (operation.datosBancarios.banco || operation.datosBancarios.numeroCuenta)) {
+      bankData = operation.datosBancarios;
+      console.log('🏦 DEBUG - Usando datosBancarios:', bankData);
+    }
+    // Then check bancosProveedores (direct from backend)
+    else if ((operation as any).bancosProveedores) {
+      bankData = (operation as any).bancosProveedores;
+      console.log('🏦 DEBUG - Usando bancosProveedores:', bankData);
+    }
+    
+    if (bankData) {
+      return {
+        beneficiario: bankData.nombre_beneficiario || bankData.beneficiario || operation.proveedorBeneficiario || '',
+        banco: bankData.nombre_banco || bankData.banco || '',
+        numeroCuenta: bankData.numero_cuenta || bankData.numeroCuenta || '',
+        swift: bankData.swift || '',
+        iban: bankData.iban || '',
+        direccion: bankData.direccion || '',
+        codigoPostal: bankData.codigo_postal || '',
+        provinciaEstado: bankData.provincia_estado || bankData.paisBanco || '',
+        pais: bankData.pais || operation.paisProveedor || ''
+      };
+    }
+    
+    // Fallback to operation data only
+    console.log('🏦 DEBUG - Sin datos bancarios, usando fallback');
+    return {
+      beneficiario: operation.proveedorBeneficiario || '',
+      banco: '',
+      numeroCuenta: '',
+      swift: '',
+      iban: '',
+      direccion: '',
+      codigoPostal: '',
+      provinciaEstado: '',
+      pais: operation.paisProveedor || ''
+    };
+  };
+
+  const bankInfo = getBankInfo();
+  const hasCompleteData = bankInfo.banco && bankInfo.numeroCuenta;
+
+  return (
+    <div className="space-y-6">
+      {/* Provider Header */}
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-gray-900">Información del Proveedor</h4>
+        <div className="text-sm text-gray-500">
+          Datos bancarios y contacto
+        </div>
+      </div>
+
+      {/* Provider Basic Information */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Building className="h-5 w-5 text-primary-600" />
+          Información General del Proveedor
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h5 className="font-medium text-gray-700 mb-2">Nombre del Proveedor (Beneficiario)</h5>
+            <p className="text-lg font-semibold text-gray-900 break-words">
+              {bankInfo.beneficiario || 'No especificado'}
+            </p>
+            <p className="text-sm text-gray-600 mt-1">Nombre completo del beneficiario de los pagos</p>
+          </div>
+          
+          <div>
+            <h5 className="font-medium text-gray-700 mb-2">País del Proveedor</h5>
+            <p className="text-lg font-semibold text-gray-900">
+              {bankInfo.pais || 'No especificado'}
+            </p>
+            <p className="text-sm text-gray-600 mt-1">País de origen del proveedor</p>
+          </div>
+
+          {bankInfo.direccion && (
+            <div className="md:col-span-2">
+              <h5 className="font-medium text-gray-700 mb-2">Dirección</h5>
+              <p className="text-gray-900 break-words">{bankInfo.direccion}</p>
+              <div className="flex gap-4 mt-1 text-sm text-gray-600">
+                {bankInfo.codigoPostal && (
+                  <span>CP: {bankInfo.codigoPostal}</span>
+                )}
+                {bankInfo.provinciaEstado && (
+                  <span>Estado/Provincia: {bankInfo.provinciaEstado}</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Banking Information */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Landmark className="h-5 w-5 text-blue-600" />
+          Información Bancaria
+        </h3>
+
+        {hasCompleteData ? (
+          <div className="space-y-6">
+            {/* Bank Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h5 className="font-medium text-blue-900 mb-2 flex items-center gap-2">
+                  <Landmark className="h-4 w-4" />
+                  Banco
+                </h5>
+                <p className="text-lg font-semibold text-blue-800 break-words">
+                  {bankInfo.banco}
+                </p>
+                <p className="text-sm text-blue-600 mt-1">Institución financiera</p>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-4">
+                <h5 className="font-medium text-green-900 mb-2 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4" />
+                  Número de Cuenta
+                </h5>
+                <div className="flex items-center gap-2">
+                  <p className="text-lg font-mono font-semibold text-green-800 break-all">
+                    {bankInfo.numeroCuenta}
+                  </p>
+                  <button
+                    onClick={() => navigator.clipboard?.writeText(bankInfo.numeroCuenta)}
+                    className="p-1 text-green-600 hover:text-green-700 hover:bg-green-100 rounded transition-colors"
+                    title="Copiar número de cuenta"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+                <p className="text-sm text-green-600 mt-1">Cuenta bancaria del beneficiario</p>
+              </div>
+            </div>
+
+            {/* International Codes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {bankInfo.swift && (
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <h5 className="font-medium text-purple-900 mb-2">Código SWIFT/BIC</h5>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-mono font-semibold text-purple-800">
+                      {bankInfo.swift}
+                    </p>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(bankInfo.swift)}
+                      className="p-1 text-purple-600 hover:text-purple-700 hover:bg-purple-100 rounded transition-colors"
+                      title="Copiar código SWIFT"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-purple-600 mt-1">Código internacional del banco</p>
+                </div>
+              )}
+
+              {bankInfo.iban && (
+                <div className="bg-orange-50 rounded-lg p-4">
+                  <h5 className="font-medium text-orange-900 mb-2">IBAN</h5>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-mono font-semibold text-orange-800 break-all">
+                      {bankInfo.iban}
+                    </p>
+                    <button
+                      onClick={() => navigator.clipboard?.writeText(bankInfo.iban)}
+                      className="p-1 text-orange-600 hover:text-orange-700 hover:bg-orange-100 rounded transition-colors"
+                      title="Copiar IBAN"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="text-sm text-orange-600 mt-1">Número de cuenta bancaria internacional</p>
+                </div>
+              )}
+            </div>
+
+            {/* Complete Banking Summary */}
+            <div className="bg-gray-50 rounded-lg p-4 border-l-4 border-blue-500">
+              <h6 className="font-medium text-gray-900 mb-3">Resumen Completo para Transferencias</h6>
+              <div className="space-y-2 text-sm">
+                <div className="grid grid-cols-3 gap-4">
+                  <span className="font-medium text-gray-700">Beneficiario:</span>
+                  <span className="col-span-2 text-gray-900 break-words">{bankInfo.beneficiario}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <span className="font-medium text-gray-700">Banco:</span>
+                  <span className="col-span-2 text-gray-900 break-words">{bankInfo.banco}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <span className="font-medium text-gray-700">Cuenta:</span>
+                  <span className="col-span-2 text-gray-900 font-mono break-all">{bankInfo.numeroCuenta}</span>
+                </div>
+                {bankInfo.swift && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <span className="font-medium text-gray-700">SWIFT:</span>
+                    <span className="col-span-2 text-gray-900 font-mono">{bankInfo.swift}</span>
+                  </div>
+                )}
+                {bankInfo.iban && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <span className="font-medium text-gray-700">IBAN:</span>
+                    <span className="col-span-2 text-gray-900 font-mono break-all">{bankInfo.iban}</span>
+                  </div>
+                )}
+                {bankInfo.pais && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <span className="font-medium text-gray-700">País:</span>
+                    <span className="col-span-2 text-gray-900">{bankInfo.pais}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <Landmark className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h5 className="text-lg font-medium text-gray-900 mb-2">
+              Sin Información Bancaria Completa
+            </h5>
+            <p className="text-gray-600 max-w-md mx-auto">
+              {bankInfo.beneficiario ? 
+                'Los datos bancarios completos no están disponibles para este proveedor. Solo se tiene el nombre del beneficiario.' :
+                'No hay información bancaria disponible para este proveedor en los registros actuales.'
+              }
+            </p>
+            {bankInfo.beneficiario && (
+              <div className="mt-4 bg-gray-50 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-gray-700">
+                  <span className="font-medium">Proveedor:</span> {bankInfo.beneficiario}
+                </p>
+                {bankInfo.pais && (
+                  <p className="text-sm text-gray-700 mt-1">
+                    <span className="font-medium">País:</span> {bankInfo.pais}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Quick Actions */}
+      {hasCompleteData && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Acciones Rápidas</h3>
+          <div className="flex flex-wrap gap-3">
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm">
+              <Copy className="h-4 w-4" />
+              Copiar Datos Bancarios
+            </button>
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm">
+              <ExternalLink className="h-4 w-4" />
+              Exportar Información
+            </button>
+            <button className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-sm">
+              <Share2 className="h-4 w-4" />
+              Compartir Detalles
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
