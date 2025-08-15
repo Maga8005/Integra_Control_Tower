@@ -68,8 +68,8 @@ function getLastCompletedState(timeline?: Timeline): string {
   return stateName;
 }
 
-// Timeline step configuration - 3 pasos principales según dashboard
-const TIMELINE_STEPS = [
+// Default timeline step configuration for fallback cases
+const DEFAULT_TIMELINE_STEPS = [
   {
     id: 1,
     label: 'Solicitud enviada',
@@ -92,6 +92,34 @@ const TIMELINE_STEPS = [
     color: 'green'
   }
 ] as const;
+
+// Helper function to get appropriate icon for timeline step
+function getStepIcon(stepName: string, index: number) {
+  const lowerName = stepName.toLowerCase();
+  
+  if (lowerName.includes('solicitud') || lowerName.includes('enviada') || lowerName.includes('firma')) {
+    return FileText;
+  }
+  if (lowerName.includes('negociación') || lowerName.includes('negociacion') || lowerName.includes('revision') || lowerName.includes('revisión')) {
+    return User;
+  }
+  if (lowerName.includes('pago') || lowerName.includes('procesamiento') || lowerName.includes('giro') || lowerName.includes('liberación')) {
+    return CreditCard;
+  }
+  if (lowerName.includes('documento') || lowerName.includes('documentación')) {
+    return FileText;
+  }
+  if (lowerName.includes('logística') || lowerName.includes('logistico') || lowerName.includes('envío') || lowerName.includes('transporte')) {
+    return Truck;
+  }
+  if (lowerName.includes('finalización') || lowerName.includes('completado') || lowerName.includes('entrega')) {
+    return CheckCircle;
+  }
+  
+  // Default icons based on position
+  const defaultIcons = [FileText, User, Building, Truck, CreditCard, CheckCircle];
+  return defaultIcons[index % defaultIcons.length] || Circle;
+}
 
 // Status styling configuration
 const STATUS_STYLES = {
@@ -400,43 +428,60 @@ interface TimelineDisplayProps {
 }
 
 function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
-  // Create complete timeline showing all steps in order, regardless of backend data
+  // Create complete timeline using backend data when available, fallback to default steps
   const createCompleteTimeline = () => {
     const backendTimeline = operation.timeline;
     const backendStates = backendTimeline?.states || [];
     
-    // Create timeline with all steps in sequential order
-    const completeSteps = TIMELINE_STEPS.map((step, index) => {
-      // Find corresponding backend state for this step
-      const backendState = backendStates.find(state => 
-        state.name === step.label || 
-        state.name.toLowerCase().includes(step.label.toLowerCase()) ||
-        step.label.toLowerCase().includes(state.name.toLowerCase())
-      );
+    // If we have backend timeline data, use it directly
+    if (backendStates.length > 0) {
+      console.log(`🔍 [TIMELINE] Usando ${backendStates.length} pasos del backend para operación ${operation.id}`);
       
-      // Determine status based on backend data and operation progress
+      const states = backendStates.map((state, index) => ({
+        id: state.id || index + 1,
+        name: state.name,
+        description: state.description || `Descripción para ${state.name}`,
+        status: state.status,
+        progress: state.progress,
+        completedAt: state.completedAt,
+        notes: state.notes
+      }));
+      
+      // Find current step (first in-progress or last completed + 1)
+      let currentStateId = 1;
+      const inProgressState = states.find(state => state.status === 'in-progress');
+      if (inProgressState) {
+        currentStateId = inProgressState.id;
+      } else {
+        const completedStates = states.filter(state => state.status === 'completed');
+        if (completedStates.length > 0) {
+          currentStateId = Math.min(completedStates[completedStates.length - 1].id + 1, states.length);
+        }
+      }
+      
+      return {
+        states,
+        currentState: currentStateId,
+        overallProgress: backendTimeline?.overallProgress || operation.progress || 0
+      };
+    }
+    
+    // Fallback: Use default steps when no backend timeline is available
+    console.log(`⚠️ [TIMELINE] Sin datos del backend, usando pasos por defecto para operación ${operation.id}`);
+    const completeSteps = DEFAULT_TIMELINE_STEPS.map((step, index) => {
+      // Estimate status based on operation progress and step order
+      const operationProgress = operation.progress || 0;
+      const stepThreshold = ((index + 1) / DEFAULT_TIMELINE_STEPS.length) * 100;
+      
       let status = 'pending';
       let progress = 0;
-      let completedAt = null;
-      let notes = '';
       
-      if (backendState) {
-        status = backendState.status || 'pending';
-        progress = backendState.progress || 0;
-        completedAt = backendState.completedAt;
-        notes = backendState.notes || '';
-      } else {
-        // Estimate status based on operation progress and step order
-        const operationProgress = operation.progress || 0;
-        const stepThreshold = ((index + 1) / TIMELINE_STEPS.length) * 100;
-        
-        if (operationProgress >= stepThreshold) {
-          status = 'completed';
-          progress = 100;
-        } else if (operationProgress >= (stepThreshold - 20)) {
-          status = 'in-progress';
-          progress = Math.round((operationProgress - (stepThreshold - 20)) * 5);
-        }
+      if (operationProgress >= stepThreshold) {
+        status = 'completed';
+        progress = 100;
+      } else if (operationProgress >= (stepThreshold - 20)) {
+        status = 'in-progress';
+        progress = Math.round((operationProgress - (stepThreshold - 20)) * 5);
       }
       
       return {
@@ -445,8 +490,8 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
         description: step.description,
         status,
         progress,
-        completedAt,
-        notes
+        completedAt: status === 'completed' ? new Date().toISOString() : null,
+        notes: ''
       };
     });
     
@@ -457,7 +502,7 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
         currentStateId = completeSteps[i].id;
         break;
       } else if (completeSteps[i].status === 'completed') {
-        currentStateId = Math.min(completeSteps[i].id + 1, 3); // Máximo 3 pasos
+        currentStateId = Math.min(completeSteps[i].id + 1, DEFAULT_TIMELINE_STEPS.length);
         break;
       }
     }
@@ -530,8 +575,7 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
             }
             
             const StatusIcon = statusStyle.icon;
-            const stepConfig = TIMELINE_STEPS.find(step => step.id === state.id);
-            const StepIcon = stepConfig?.icon || Circle;
+            const StepIcon = getStepIcon(state.name, index);
             
             return (
               <div key={state.id} className="relative flex items-start pb-8">
