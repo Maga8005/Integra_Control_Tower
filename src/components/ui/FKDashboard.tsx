@@ -11,7 +11,6 @@ import {
   User,
   Building,
   Calendar,
-  Database,
   RefreshCw,
   CreditCard
 } from 'lucide-react';
@@ -295,15 +294,6 @@ export default function FKDashboard({ className }: FKDashboardProps) {
             Actualizar
           </button>
           
-          {/* CSV Data Viewer Link */}
-          <button
-            onClick={() => navigate('/csv-data')}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white text-sm rounded-lg hover:bg-primary-700 transition-colors"
-            title="Ver datos raw del CSV"
-          >
-            <Database className="h-4 w-4" />
-            Datos CSV
-          </button>
           
           <div className="text-sm text-gray-500 text-right">
             <div>Última actualización: {metadata?.lastUpdated ? 
