@@ -15,13 +15,21 @@ import {
   Filter,
   Search,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  CreditCard
 } from 'lucide-react';
 import { Operation, TimelineEvent, TimelineStatus, OperationStatus } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useDashboardData, BackendOperationCard, TimelineState, Timeline } from '../../hooks/useDashboardData';
 import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
 import { cn } from '../../utils/cn';
+
+// Define las fases válidas del dashboard
+const DASHBOARD_PHASES = [
+  'Solicitud enviada',
+  'Estado negociación', 
+  'Procesamiento de Pago a Proveedor'
+] as const;
 
 // Helper functions
 function getLastCompletedState(timeline?: Timeline): string {
@@ -35,45 +43,53 @@ function getLastCompletedState(timeline?: Timeline): string {
     current.id > latest.id ? current : latest
   );
   
-  return lastCompleted.name;
+  // Mapear el estado del backend a las fases del dashboard
+  const stateName = lastCompleted.name;
+  
+  // Buscar coincidencia exacta primero
+  for (const phase of DASHBOARD_PHASES) {
+    if (stateName === phase) {
+      return phase;
+    }
+  }
+  
+  // Si no hay coincidencia exacta, buscar por palabras clave
+  if (stateName.toLowerCase().includes('solicitud') || stateName.toLowerCase().includes('enviada')) {
+    return 'Solicitud enviada';
+  }
+  if (stateName.toLowerCase().includes('negociación') || stateName.toLowerCase().includes('negociacion')) {
+    return 'Estado negociación';
+  }
+  if (stateName.toLowerCase().includes('pago') || stateName.toLowerCase().includes('procesamiento')) {
+    return 'Procesamiento de Pago a Proveedor';
+  }
+  
+  // Si no hay coincidencia, devolver el nombre original
+  return stateName;
 }
 
-// Timeline step configuration - 5 pasos en orden secuencial
+// Timeline step configuration - 3 pasos principales según dashboard
 const TIMELINE_STEPS = [
   {
     id: 1,
     label: 'Solicitud enviada',
     description: 'Firma de cotización y confirmación inicial',
-    icon: User,
-    color: 'coral'
+    icon: FileText,
+    color: 'blue'
   },
   {
     id: 2,
     label: 'Estado negociación',
     description: 'Negociación de términos y condiciones',
-    icon: FileText,
-    color: 'primary'
+    icon: User,
+    color: 'orange'
   },
   {
     id: 3,
     label: 'Procesamiento de Pago a Proveedor',
     description: 'Procesamiento de pagos y giros a proveedores',
-    icon: DollarSign,
-    color: 'yellow'
-  },
-  {
-    id: 4,
-    label: 'Entrega de mercancía',
-    description: 'Envío y entrega de las mercancías al cliente',
-    icon: Truck,
-    color: 'blue'
-  },
-  {
-    id: 5,
-    label: 'Operación Completada',
-    description: 'Operación finalizada exitosamente',
-    icon: CheckCircle,
-    color: 'success'
+    icon: CreditCard,
+    color: 'green'
   }
 ] as const;
 
@@ -317,10 +333,9 @@ export default function FKTimeline({
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="font-medium text-gray-900">
-                          {operation.providerName}
+                          {operation.clientName}
                         </h4>
-                        <p className="text-sm text-gray-600">{operation.clientName}</p>
-                        <p className="text-xs text-gray-500">{operation.id}</p>
+                        <p className="text-sm text-gray-600">{operation.providerName}</p>
                       </div>
                       <div className="text-right">
                         <div className={cn(
@@ -442,7 +457,7 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
         currentStateId = completeSteps[i].id;
         break;
       } else if (completeSteps[i].status === 'completed') {
-        currentStateId = Math.min(completeSteps[i].id + 1, 5); // Máximo 5 pasos
+        currentStateId = Math.min(completeSteps[i].id + 1, 3); // Máximo 3 pasos
         break;
       }
     }
@@ -463,13 +478,10 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold text-gray-900">
-              {operation.providerName}
+              {operation.clientName}
             </h3>
+            <p className="text-base text-gray-700 mt-1">{operation.providerName}</p>
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-              <div className="flex items-center gap-1">
-                <Building className="h-4 w-4" />
-                {operation.clientName}
-              </div>
               <div className="flex items-center gap-1">
                 <DollarSign className="h-4 w-4" />
                 {operation.totalValue}
@@ -479,7 +491,6 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
                 {operation.assignedPerson}
               </div>
             </div>
-            <p className="text-xs text-gray-500 mt-1">ID: {operation.id}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Shield, Users, Database, Settings, BarChart3, FileDown } from 'lucide-react';
+import { LogOut, Shield, Users, Settings, BarChart3, FileDown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications, useAuthNotifications } from '../hooks/useNotifications';
 import FKAdminDashboard from '../components/ui/FKAdminDashboard';
@@ -26,9 +26,6 @@ export default function AdminDashboard() {
     navigate('/admin/login', { replace: true });
   };
 
-  const handleDataManagement = () => {
-    navigate('/admin/csv-data');
-  };
 
   const handleViewTimeline = () => {
     navigate('/admin/timeline');
@@ -85,14 +82,6 @@ export default function AdminDashboard() {
               {/* Admin actions */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleDataManagement}
-                  className="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                  title="Gestión de Datos"
-                >
-                  <Database className="h-5 w-5" />
-                </button>
-                
-                <button
                   onClick={handleLogout}
                   className="p-2 text-slate-300 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
                   title="Cerrar Sesión"
@@ -112,18 +101,7 @@ export default function AdminDashboard() {
         <div className="mb-6">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Acciones de Administrador</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={handleDataManagement}
-                className="flex items-center gap-3 p-4 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors border border-primary-200"
-              >
-                <Database className="h-6 w-6 text-primary-600" />
-                <div className="text-left">
-                  <p className="font-medium text-primary-700">Gestión de Datos</p>
-                  <p className="text-sm text-primary-600">Ver y administrar CSV</p>
-                </div>
-              </button>
-
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <button
                 onClick={handleViewTimeline}
                 className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors border border-green-200"
