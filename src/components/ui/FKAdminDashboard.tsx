@@ -20,78 +20,79 @@ import {
   X,
   Upload,
   FileText,
-  CheckCircle2
+  CheckCircle2,
+  Truck
 } from 'lucide-react';
 import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
 import { cn } from '../../utils/cn';
 import { useState, useMemo } from 'react';
 import { environment, supabaseHeaders } from '../../config/environment';
 
-// Timeline phases mapping
+// Timeline phases mapping - 5 fases en orden secuencial
 const TIMELINE_PHASES = [
-  'Solicitud Enviada',
-  'Documentos de Operación y Pago Cuota Operacional', 
-  'Procesamiento de Pago',
-  'Envío y Logística',
+  'Solicitud enviada',
+  'Estado negociación',
+  'Procesamiento de Pago a Proveedor',
+  'Entrega de mercancía',
   'Operación Completada'
 ];
 
-// Helper function to get current phase instead of next pending phase
+// Helper function to get current phase - muestra la ÚLTIMA fase en proceso
 function getCurrentTimelinePhase(operation: any): string {
-  // If operation has timeline data, use it
-  if (operation.timeline && operation.timeline.length > 0) {
-    // Find the current phase (last completed or first in progress)
-    let currentPhaseIndex = -1;
+  // Si la operación tiene datos de timeline, usarlos
+  if (operation.timeline && operation.timeline.states && operation.timeline.states.length > 0) {
+    // Ordenar timeline por id para asegurar secuencia correcta
+    const sortedTimeline = [...operation.timeline.states].sort((a, b) => (a.id || 0) - (b.id || 0));
     
-    // First, look for phases in progress
-    for (let i = 0; i < operation.timeline.length; i++) {
-      const event = operation.timeline[i];
-      if (event.estado === 'en_proceso') {
-        return event.fase;
+    // Buscar TODAS las fases que están 'in-progress' y devolver la ÚLTIMA (id más alto)
+    let ultimaFaseEnProceso = null;
+    for (const event of sortedTimeline) {
+      if (event.status === 'in-progress') {
+        ultimaFaseEnProceso = event;
       }
     }
     
-    // If no phase is in progress, find the last completed phase
-    for (let i = 0; i < operation.timeline.length; i++) {
-      const event = operation.timeline[i];
-      if (event.estado === 'completado') {
-        currentPhaseIndex = i;
+    if (ultimaFaseEnProceso) {
+      return ultimaFaseEnProceso.name;
+    }
+    
+    // Si no hay fases en proceso, encontrar la última completada
+    let ultimaCompletada = null;
+    for (const event of sortedTimeline) {
+      if (event.status === 'completed') {
+        ultimaCompletada = event;
       }
     }
     
-    // If we found completed phases, return the last one
-    if (currentPhaseIndex >= 0) {
-      const currentPhase = operation.timeline[currentPhaseIndex];
-      return currentPhase.fase;
+    if (ultimaCompletada) {
+      return ultimaCompletada.name;
     }
     
-    // If no phases are completed or in progress, return the first phase
-    if (operation.timeline.length > 0) {
-      return operation.timeline[0].fase;
-    }
+    // Si no hay fases completadas ni en proceso, devolver la primera fase
+    return sortedTimeline[0]?.name || TIMELINE_PHASES[0];
   }
   
-  // Fallback: estimate current phase based on progress percentage
+  // Fallback: estimar fase basada en porcentaje de progreso
   const progress = operation.progress || 0;
   if (progress === 100) return 'Operación Completada';
   if (progress >= 80) return TIMELINE_PHASES[4]; // Completion phase
-  if (progress >= 60) return TIMELINE_PHASES[3]; // Shipping
-  if (progress >= 40) return TIMELINE_PHASES[2]; // Payment
-  if (progress >= 20) return TIMELINE_PHASES[1]; // Documents
+  if (progress >= 60) return TIMELINE_PHASES[3]; // Delivery phase
+  if (progress >= 40) return TIMELINE_PHASES[2]; // Payment processing
+  if (progress >= 20) return TIMELINE_PHASES[1]; // Negotiation
   return TIMELINE_PHASES[0]; // Initial phase
 }
 
 // Get phase color and icon
 function getPhaseConfig(phaseName: string) {
   switch (phaseName) {
-    case 'Solicitud Enviada':
+    case 'Solicitud enviada':
       return { color: 'bg-blue-100 text-blue-600 border-blue-200', icon: Clock };
-    case 'Documentos de Operación y Pago Cuota Operacional':
-      return { color: 'bg-orange-100 text-orange-600 border-orange-200', icon: AlertCircle };
-    case 'Procesamiento de Pago':
+    case 'Estado negociación':
+      return { color: 'bg-orange-100 text-orange-600 border-orange-200', icon: TrendingUp };
+    case 'Procesamiento de Pago a Proveedor':
       return { color: 'bg-purple-100 text-purple-600 border-purple-200', icon: DollarSign };
-    case 'Envío y Logística':
-      return { color: 'bg-indigo-100 text-indigo-600 border-indigo-200', icon: TrendingUp };
+    case 'Entrega de mercancía':
+      return { color: 'bg-indigo-100 text-indigo-600 border-indigo-200', icon: Truck };
     case 'Operación Completada':
       return { color: 'bg-success-100 text-success-600 border-success-200', icon: CheckCircle };
     default:

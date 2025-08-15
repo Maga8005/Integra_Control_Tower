@@ -38,39 +38,44 @@ function getLastCompletedState(timeline?: Timeline): string {
   return lastCompleted.name;
 }
 
-// Timeline step configuration - Updated to match backend 5 states
-const TIMELINE_STEPS = {
-  1: {
-    label: 'Solicitud Enviada',
+// Timeline step configuration - 5 pasos en orden secuencial
+const TIMELINE_STEPS = [
+  {
+    id: 1,
+    label: 'Solicitud enviada',
     description: 'Firma de cotización y confirmación inicial',
     icon: User,
     color: 'coral'
   },
-  2: {
-    label: 'Documentos y Pago Cuota Operacional',
-    description: 'Documentación legal y pago de cuota operacional',
+  {
+    id: 2,
+    label: 'Estado negociación',
+    description: 'Negociación de términos y condiciones',
     icon: FileText,
     color: 'primary'
   },
-  3: {
-    label: 'Procesamiento de Pago',
-    description: 'Procesamiento de pagos y términos financieros',
+  {
+    id: 3,
+    label: 'Procesamiento de Pago a Proveedor',
+    description: 'Procesamiento de pagos y giros a proveedores',
     icon: DollarSign,
     color: 'yellow'
   },
-  4: {
-    label: 'Envío y Logística',
-    description: 'Coordinación de envío y seguimiento de mercancías',
+  {
+    id: 4,
+    label: 'Entrega de mercancía',
+    description: 'Envío y entrega de las mercancías al cliente',
     icon: Truck,
     color: 'blue'
   },
-  5: {
+  {
+    id: 5,
     label: 'Operación Completada',
-    description: 'Mercancías entregadas y operación finalizada',
+    description: 'Operación finalizada exitosamente',
     icon: CheckCircle,
     color: 'success'
   }
-} as const;
+] as const;
 
 // Status styling configuration
 const STATUS_STYLES = {
@@ -380,19 +385,76 @@ interface TimelineDisplayProps {
 }
 
 function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
-  // Get timeline data from the operation, or create default empty timeline
-  const timeline = operation.timeline;
+  // Create complete timeline showing all steps in order, regardless of backend data
+  const createCompleteTimeline = () => {
+    const backendTimeline = operation.timeline;
+    const backendStates = backendTimeline?.states || [];
+    
+    // Create timeline with all steps in sequential order
+    const completeSteps = TIMELINE_STEPS.map((step, index) => {
+      // Find corresponding backend state for this step
+      const backendState = backendStates.find(state => 
+        state.name === step.label || 
+        state.name.toLowerCase().includes(step.label.toLowerCase()) ||
+        step.label.toLowerCase().includes(state.name.toLowerCase())
+      );
+      
+      // Determine status based on backend data and operation progress
+      let status = 'pending';
+      let progress = 0;
+      let completedAt = null;
+      let notes = '';
+      
+      if (backendState) {
+        status = backendState.status || 'pending';
+        progress = backendState.progress || 0;
+        completedAt = backendState.completedAt;
+        notes = backendState.notes || '';
+      } else {
+        // Estimate status based on operation progress and step order
+        const operationProgress = operation.progress || 0;
+        const stepThreshold = ((index + 1) / TIMELINE_STEPS.length) * 100;
+        
+        if (operationProgress >= stepThreshold) {
+          status = 'completed';
+          progress = 100;
+        } else if (operationProgress >= (stepThreshold - 20)) {
+          status = 'in-progress';
+          progress = Math.round((operationProgress - (stepThreshold - 20)) * 5);
+        }
+      }
+      
+      return {
+        id: step.id,
+        name: step.label,
+        description: step.description,
+        status,
+        progress,
+        completedAt,
+        notes
+      };
+    });
+    
+    // Find current step (first in-progress or last completed)
+    let currentStateId = 1;
+    for (let i = completeSteps.length - 1; i >= 0; i--) {
+      if (completeSteps[i].status === 'in-progress') {
+        currentStateId = completeSteps[i].id;
+        break;
+      } else if (completeSteps[i].status === 'completed') {
+        currentStateId = Math.min(completeSteps[i].id + 1, 5); // Máximo 5 pasos
+        break;
+      }
+    }
+    
+    return {
+      states: completeSteps,
+      currentState: currentStateId,
+      overallProgress: operation.progress || 0
+    };
+  };
   
-  if (!timeline || !timeline.states) {
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <div className="text-center text-gray-500">
-          <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-          <p>No hay datos de timeline disponibles para esta operación</p>
-        </div>
-      </div>
-    );
-  }
+  const timeline = createCompleteTimeline();
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -457,7 +519,7 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
             }
             
             const StatusIcon = statusStyle.icon;
-            const stepConfig = TIMELINE_STEPS[state.id as keyof typeof TIMELINE_STEPS];
+            const stepConfig = TIMELINE_STEPS.find(step => step.id === state.id);
             const StepIcon = stepConfig?.icon || Circle;
             
             return (
