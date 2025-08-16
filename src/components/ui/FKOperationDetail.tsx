@@ -20,12 +20,14 @@ import {
   Share2,
   MoreHorizontal,
   RefreshCw,
-  Landmark
+  Landmark,
+  FileCheck
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useOperationNotifications } from '../../hooks/useNotifications';
 import { useOperationDetail, BackendOperationDetail } from '../../hooks/useOperationDetail';
 import { cn } from '../../utils/cn';
+import FKDocumentsTab from './FKDocumentsTab';
 
 
 // Status configuration
@@ -60,7 +62,7 @@ export default function FKOperationDetail({
 }: FKOperationDetailProps) {
   const { user, hasPermission } = useAuth();
   const { notifyOperationSuccess, notifyOperationError } = useOperationNotifications();
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'provider'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'provider' | 'documents'>('overview');
 
   // Use optimized hook for single operation
   const { operation, isLoading, error, refetch } = useOperationDetail(operationId);
@@ -238,6 +240,7 @@ export default function FKOperationDetail({
             {[
               { id: 'overview', label: 'Resumen', icon: Building },
               { id: 'timeline', label: 'Cronograma', icon: Clock },
+              { id: 'documents', label: 'Documentos', icon: FileCheck },
               { id: 'provider', label: 'Proveedor', icon: Landmark }
             ].map(tab => {
               const Icon = tab.icon;
@@ -267,6 +270,9 @@ export default function FKOperationDetail({
           )}
           {activeTab === 'timeline' && (
             <TimelineTab operation={operation} />
+          )}
+          {activeTab === 'documents' && (
+            <FKDocumentsTab operation={operation} />
           )}
           {activeTab === 'provider' && (
             <ProviderTab operation={operation} />

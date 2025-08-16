@@ -12,12 +12,15 @@ import {
   Building,
   Calendar,
   RefreshCw,
-  CreditCard
+  CreditCard,
+  Circle
 } from 'lucide-react';
 import { Operation, OperationStatus, DashboardStats } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useNewUser } from '../../hooks/useNewUser';
 import { useDashboardData, BackendOperationCard } from '../../hooks/useDashboardData';
+import { useClientDocuments } from '../../hooks/useClientDocuments';
+import { getCountryFromOperation } from '../../types/Documents';
 import { cn } from '../../utils/cn';
 
 // Status configuration - Mapeo del backend al frontend
@@ -67,8 +70,41 @@ const PHASE_CONFIG = {
   }
 } as const;
 
+// Document status configuration
+const DOCUMENT_STATUS_CONFIG = {
+  'no-iniciado': {
+    label: 'No Iniciado',
+    color: 'bg-gray-100 text-gray-600 border-gray-200',
+    icon: Circle
+  },
+  'iniciado': {
+    label: 'Iniciado',
+    color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    icon: Clock
+  },
+  'progreso': {
+    label: 'En Progreso',
+    color: 'bg-blue-100 text-blue-700 border-blue-200', 
+    icon: RefreshCw
+  },
+  'completado': {
+    label: 'Completado',
+    color: 'bg-success-100 text-success-700 border-success-200',
+    icon: CheckCircle
+  }
+} as const;
+
 type BackendStatus = 'draft' | 'in-progress' | 'completed' | 'on-hold';
+type DocumentStatusType = keyof typeof DOCUMENT_STATUS_CONFIG;
 type TimelinePhase = keyof typeof PHASE_CONFIG;
+
+// Function to calculate document status based on completion percentage
+function getDocumentStatus(completionPercentage: number): DocumentStatusType {
+  if (completionPercentage === 0) return 'no-iniciado';
+  if (completionPercentage > 0 && completionPercentage < 50) return 'iniciado';
+  if (completionPercentage >= 50 && completionPercentage < 100) return 'progreso';
+  return 'completado';
+}
 
 interface FKDashboardProps {
   className?: string;
@@ -521,6 +557,22 @@ export default function FKDashboard({ className }: FKDashboardProps) {
   );
 }
 
+// Document Status Component
+interface DocumentStatusBadgeProps {
+  operation: BackendOperationCard;
+}
+
+function DocumentStatusBadge({ operation }: DocumentStatusBadgeProps) {
+  console.log('🏷️ [DOCUMENTS-BADGE] SIMPLE VERSION - Rendering for operation:', operation.id);
+  
+  // Versión súper simple para debug
+  return (
+    <div className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded border">
+      DEBUG: {operation.id.slice(-4)}
+    </div>
+  );
+}
+
 // Backend Operation Card Component
 interface DashboardOperationCardProps {
   operation: BackendOperationCard;
@@ -528,6 +580,7 @@ interface DashboardOperationCardProps {
 }
 
 function DashboardOperationCard({ operation, onViewDetails }: DashboardOperationCardProps) {
+  console.log('🎯 [DASHBOARD-CARD] Renderizando tarjeta para operación:', operation.id);
   const statusConfig = STATUS_CONFIG[operation.status];
   
   // Función para obtener el último estado completado del timeline
@@ -673,6 +726,12 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
             <span className="font-medium text-gray-900 text-xs truncate max-w-[150px]" title={operation.assignedPerson}>
               {operation.assignedPerson}
             </span>
+          </div>
+
+          {/* Estado de Documentos */}
+          <div className="flex items-center justify-between">
+            <span className="text-gray-600">Documentos:</span>
+            <DocumentStatusBadge operation={operation} />
           </div>
 
           {/* Fecha de Actualización */}

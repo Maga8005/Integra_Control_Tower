@@ -21,9 +21,12 @@ import {
   Upload,
   FileText,
   CheckCircle2,
-  Truck
+  Truck,
+  Circle
 } from 'lucide-react';
 import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
+import { useClientDocuments } from '../../hooks/useClientDocuments';
+import { getCountryFromOperation } from '../../types/Documents';
 import { cn } from '../../utils/cn';
 import { useState, useMemo } from 'react';
 import { environment, supabaseHeaders } from '../../config/environment';
@@ -36,6 +39,40 @@ const TIMELINE_PHASES = [
   'Entrega de mercancía',
   'Operación Completada'
 ];
+
+// Document status configuration
+const DOCUMENT_STATUS_CONFIG = {
+  'no-iniciado': {
+    label: 'No Iniciado',
+    color: 'bg-gray-100 text-gray-600 border-gray-200',
+    icon: Circle
+  },
+  'iniciado': {
+    label: 'Iniciado',
+    color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    icon: Clock
+  },
+  'progreso': {
+    label: 'En Progreso',
+    color: 'bg-blue-100 text-blue-700 border-blue-200', 
+    icon: RefreshCw
+  },
+  'completado': {
+    label: 'Completado',
+    color: 'bg-green-100 text-green-700 border-green-200',
+    icon: CheckCircle
+  }
+} as const;
+
+type DocumentStatusType = keyof typeof DOCUMENT_STATUS_CONFIG;
+
+// Function to calculate document status based on completion percentage
+function getDocumentStatus(completionPercentage: number): DocumentStatusType {
+  if (completionPercentage === 0) return 'no-iniciado';
+  if (completionPercentage > 0 && completionPercentage < 50) return 'iniciado';
+  if (completionPercentage >= 50 && completionPercentage < 100) return 'progreso';
+  return 'completado';
+}
 
 // Helper function to get current phase - muestra la ÚLTIMA fase en proceso
 function getCurrentTimelinePhase(operation: any): string {
@@ -100,6 +137,76 @@ function getPhaseConfig(phaseName: string) {
   }
 }
 
+// Document Status Component for Admin Dashboard
+interface DocumentStatusBadgeProps {
+  operation: any;
+}
+
+function DocumentStatusBadge({ operation }: DocumentStatusBadgeProps) {
+  console.log('🏷️ [ADMIN-DOCUMENTS-BADGE] Rendering for operation:', operation.id);
+  
+  try {
+    const country = getCountryFromOperation(operation);
+    console.log('🌍 [ADMIN-DOCUMENTS-BADGE] Country detected:', country);
+    
+    // Only show for Mexico operations  
+    if (country !== 'MX') {
+      console.log('⚠️ [ADMIN-DOCUMENTS-BADGE] Not Mexico operation, showing N/A');
+      return (
+        <div className="text-xs text-gray-500">
+          N/A
+        </div>
+      );
+    }
+
+    const { checklist, isLoading, error } = useClientDocuments(operation.id, operation);
+    console.log('📄 [ADMIN-DOCUMENTS-BADGE] useClientDocuments result:', { checklist, isLoading, error });
+    
+    if (isLoading) {
+      return (
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          Cargando...
+        </div>
+      );
+    }
+
+    if (error) {
+      console.error('❌ [ADMIN-DOCUMENTS-BADGE] Error loading documents:', error);
+      return (
+        <div className="text-xs text-red-500" title={`Error: ${error}`}>
+          {error.includes('status:') ? error : `Error: ${error.slice(0, 15)}...`}
+        </div>
+      );
+    }
+
+    const completionPercentage = checklist?.completionPercentage || 0;
+    const documentStatus = getDocumentStatus(completionPercentage);
+    const statusConfig = DOCUMENT_STATUS_CONFIG[documentStatus];
+    const StatusIcon = statusConfig.icon;
+
+    console.log('✅ [ADMIN-DOCUMENTS-BADGE] Final status:', { completionPercentage, documentStatus, statusConfig });
+
+    return (
+      <div className={cn(
+        "px-2 py-1 rounded text-xs font-medium flex items-center gap-1 border",
+        statusConfig.color
+      )}>
+        <StatusIcon className="h-3 w-3" />
+        <span className="hidden sm:inline">{statusConfig.label}</span>
+        <span className="sm:hidden">{completionPercentage}%</span>
+      </div>
+    );
+  } catch (error) {
+    console.error('💥 [ADMIN-DOCUMENTS-BADGE] Error in component:', error);
+    return (
+      <div className="text-xs text-red-500">
+        Error
+      </div>
+    );
+  }
+}
+
 export default function FKAdminDashboard() {
   const navigate = useNavigate();
   
@@ -144,7 +251,7 @@ export default function FKAdminDashboard() {
         op.providerName.toLowerCase().includes(term) ||
         op.clientNit.toLowerCase().includes(term) ||
         op.assignedPerson.toLowerCase().includes(term) ||
-        op.operationId.toLowerCase().includes(term)
+        op.id.toLowerCase().includes(term)
       );
     }
     
@@ -610,6 +717,9 @@ export default function FKAdminDashboard() {
                     Progreso
                   </th>
                   <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                    Documentos
+                  </th>
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
                     Acciones
                   </th>
                 </tr>
@@ -694,6 +804,9 @@ export default function FKAdminDashboard() {
                           {operation.progress}%
                         </span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <DocumentStatusBadge operation={operation} />
                     </td>
                     <td className="px-6 py-4">
                       <button
