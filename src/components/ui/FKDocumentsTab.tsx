@@ -336,7 +336,25 @@ function DocumentItem({
   onDeleteDocument,
   allStatuses = [] 
 }: DocumentItemProps) {
-  const isCompleted = status?.completed || false;
+  // Special logic for tipo_padron_sectorial - only show as completed when all sectorial group is ready
+  const getIsCompleted = (): boolean => {
+    if (document.id === 'mx_tipo_padron_sectorial') {
+      const baseCompleted = status?.completed || false;
+      if (!baseCompleted) return false;
+      
+      // Check if we have a valid type selection (not just "Otro (especificar)")
+      const typeValue = status?.value as string;
+      const hasValidType = typeValue && typeValue.trim() !== '' && typeValue !== 'Otro (especificar)';
+      
+      // Also require the document to be uploaded
+      const docStatus = allStatuses.find(s => s.documentId === 'mx_inscripcion_sectorial_doc');
+      return hasValidType && docStatus?.completed === true;
+    }
+    
+    return status?.completed || false;
+  };
+  
+  const isCompleted = getIsCompleted();
   
   // Helper function to check if document should be visible based on dependencies
   const isDocumentVisible = (): boolean => {
@@ -350,6 +368,7 @@ function DocumentItem({
       const sectorialRequired = allStatuses.find(s => s.documentId === 'mx_requiere_inscripcion_sectorial')?.value;
       return sectorialRequired === 'Sí';
     }
+    
     
     if (document.id === 'mx_inscripcion_sectorial_doc') {
       const sectorialRequired = allStatuses.find(s => s.documentId === 'mx_requiere_inscripcion_sectorial')?.value;
@@ -472,18 +491,60 @@ function DocumentItem({
             )}
             
             {document.type === 'select' && (
-              <select
-                value={status?.value as string || ''}
-                onChange={(e) => onInputChange(document.id, e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              >
-                <option value="">Seleccionar opción...</option>
-                {document.options?.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <select
+                  value={status?.value as string || ''}
+                  onChange={(e) => onInputChange(document.id, e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="">Seleccionar opción...</option>
+                  {document.options?.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                
+                {/* Special case: If "Otro (especificar)" is selected and this is the padron sectorial field, show text input */}
+                {document.id === 'mx_tipo_padron_sectorial' && (
+                  status?.value === 'Otro (especificar)' || 
+                  (status?.value && !document.options?.includes(status.value as string))
+                ) && (
+                  <div className="mt-3">
+                    <input
+                      type="text"
+                      placeholder="Especifique el tipo de padrón sectorial (ej: Farmacéutico, Alimentario, etc.)"
+                      defaultValue={
+                        status?.value && status.value !== 'Otro (especificar)' 
+                          ? status.value as string 
+                          : ''
+                      }
+                      onBlur={(e) => {
+                        // Only save when user finishes typing (loses focus)
+                        const value = e.target.value.trim();
+                        if (value !== '') {
+                          onInputChange(document.id, value);
+                        } else {
+                          onInputChange(document.id, 'Otro (especificar)');
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        // Also save when user presses Enter
+                        if (e.key === 'Enter') {
+                          const value = (e.target as HTMLInputElement).value.trim();
+                          if (value !== '') {
+                            onInputChange(document.id, value);
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-blue-50"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Escriba el tipo específico de padrón sectorial
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

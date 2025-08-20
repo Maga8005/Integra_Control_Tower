@@ -87,20 +87,26 @@ export function useClientDocuments(operationId: string, operation: any): UseClie
         if (dbDoc) {
           // Map database record to DocumentStatus
           let value: string | boolean | File | null = null;
+          let isCompleted = false;
           
           if (doc.type === 'text' || doc.type === 'select') {
             value = dbDoc.valor_texto || '';
+            // For text/select fields, only mark as completed if there's actual content
+            isCompleted = !!(dbDoc.valor_texto && dbDoc.valor_texto.trim() !== '');
           } else if (doc.type === 'checkbox') {
             value = dbDoc.valor_boolean || false;
+            isCompleted = dbDoc.valor_boolean === true;
           } else if (doc.type === 'date') {
             value = dbDoc.valor_fecha || '';
+            isCompleted = !!(dbDoc.valor_fecha && dbDoc.valor_fecha.trim() !== '');
           } else if (doc.type === 'file') {
             value = dbDoc.url_archivo || null;
+            isCompleted = !!(dbDoc.nombre_archivo && dbDoc.url_archivo);
           }
 
           return {
             documentId: doc.id,
-            completed: dbDoc.completado,
+            completed: isCompleted,
             value,
             fileName: dbDoc.nombre_archivo,
             uploadedAt: dbDoc.fecha_subida,

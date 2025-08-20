@@ -328,7 +328,22 @@ export function calculateCompletionPercentage(
         } else if (mainStatus.value === 'Sí') {
           const typeStatus = statuses.find(s => s.documentId === 'mx_tipo_padron_sectorial');
           const docStatus = statuses.find(s => s.documentId === 'mx_inscripcion_sectorial_doc');
-          if (typeStatus?.completed === true && docStatus?.completed === true) {
+          
+          // Check if a type has been selected and specified
+          let typeCompleted = false;
+          if (typeStatus?.completed === true) {
+            const typeValue = typeStatus.value as string;
+            if (typeValue === 'Otro (especificar)') {
+              // If "Otro" was selected but no custom text provided, not completed
+              typeCompleted = false;
+            } else if (typeValue && typeValue.trim() !== '') {
+              // Any valid selection or custom text is completed
+              typeCompleted = true;
+            }
+          }
+          
+          // Only mark the sectorial group as complete when both type and document are completed
+          if (typeCompleted && docStatus?.completed === true) {
             completedGroups++;
           }
         }
