@@ -120,6 +120,7 @@ export default function FKDashboard({ className }: FKDashboardProps) {
   // Usar el hook personalizado para obtener datos del backend
   const { operations, isLoading, error, metadata, refetch } = useDashboardData();
 
+  // TODOS LOS HOOKS DEBEN IR ANTES DE CUALQUIER RETURN CONDICIONAL
   // Filter operations based on status and phase
   const filteredOperations = useMemo(() => {
     console.log('🔍 Filtrando operaciones:', {
@@ -213,20 +214,60 @@ export default function FKDashboard({ className }: FKDashboardProps) {
   // Get status counts from backend data
   const statusCounts = useMemo(() => {
     const counts: Record<BackendStatus | 'all', number> = {
-      all: operations.length,
+      all: operations?.length || 0,
       draft: 0,
       'in-progress': 0,
       'on-hold': 0,
       completed: 0
     };
 
-    operations.forEach(op => {
-      counts[op.status]++;
-    });
+    if (operations) {
+      operations.forEach(op => {
+        counts[op.status]++;
+      });
+    }
 
     return counts;
   }, [operations]);
 
+  // Función para obtener la última fase completada del timeline
+  const getLastCompletedTimelinePhase = (operation: any): string | null => {
+    if (!operation.timeline?.states || operation.timeline.states.length === 0) {
+      return null;
+    }
+    
+    const completedStates = operation.timeline.states.filter((state: any) => state.status === 'completed');
+    if (completedStates.length === 0) {
+      return null;
+    }
+    
+    return completedStates[completedStates.length - 1]?.name || null;
+  };
+
+  // Get phase counts from backend data
+  const phaseCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: operations?.length || 0
+    };
+
+    // Initialize phase counts
+    Object.keys(PHASE_CONFIG).forEach(phase => {
+      counts[phase] = 0;
+    });
+
+    if (operations) {
+      operations.forEach(op => {
+        const lastCompletedPhase = getLastCompletedTimelinePhase(op);
+        if (lastCompletedPhase && counts[lastCompletedPhase] !== undefined) {
+          counts[lastCompletedPhase]++;
+        }
+      });
+    }
+
+    return counts;
+  }, [operations]);
+
+  // AHORA SÍ PUEDEN IR LOS RETURNS CONDICIONALES
   // Show error state if there's an error
   if (error && !isLoading) {
     return (
@@ -265,41 +306,6 @@ export default function FKDashboard({ className }: FKDashboardProps) {
       </div>
     );
   }
-
-  // Función para obtener la última fase completada del timeline
-  const getLastCompletedTimelinePhase = (operation: any): string | null => {
-    if (!operation.timeline?.states || operation.timeline.states.length === 0) {
-      return null;
-    }
-    
-    const completedStates = operation.timeline.states.filter((state: any) => state.status === 'completed');
-    if (completedStates.length === 0) {
-      return null;
-    }
-    
-    return completedStates[completedStates.length - 1]?.name || null;
-  };
-
-  // Get phase counts from backend data
-  const phaseCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: operations.length
-    };
-
-    // Initialize phase counts
-    Object.keys(PHASE_CONFIG).forEach(phase => {
-      counts[phase] = 0;
-    });
-
-    operations.forEach(op => {
-      const lastCompletedPhase = getLastCompletedTimelinePhase(op);
-      if (lastCompletedPhase && counts[lastCompletedPhase] !== undefined) {
-        counts[lastCompletedPhase]++;
-      }
-    });
-
-    return counts;
-  }, [operations]);
 
   return (
     <div className={cn("p-6 space-y-6", className)}>
@@ -563,12 +569,71 @@ interface DocumentStatusBadgeProps {
 }
 
 function DocumentStatusBadge({ operation }: DocumentStatusBadgeProps) {
-  console.log('🏷️ [DOCUMENTS-BADGE] SIMPLE VERSION - Rendering for operation:', operation.id);
+  // Determinar el país basado en la ruta comercial o país importador
+  const getCountry = (): 'MX' | 'CO' => {
+    const route = operation.route || '';
+    const paisImportador = operation.route?.split('→')[1]?.trim().toLowerCase() || '';
+    
+    if (paisImportador.includes('méxico') || paisImportador.includes('mexico')) {
+      return 'MX';
+    }
+    if (paisImportador.includes('colombia')) {
+      return 'CO';
+    }
+    
+    // Fallback: si no se puede determinar, usar Colombia
+    return 'CO';
+  };
+
+  const country = getCountry();
   
-  // Versión súper simple para debug
+  // Usar datos reales de documentos de la base de datos
+  const getDocumentStatus = () => {
+    const realPercentage = operation.documentCompletion || 0;
+    
+    if (realPercentage === 0) {
+      return {
+        label: 'No Iniciado',
+        color: 'bg-gray-100 text-gray-600',
+        percentage: 0
+      };
+    } else if (realPercentage < 30) {
+      return {
+        label: 'Iniciado',
+        color: 'bg-yellow-100 text-yellow-700',
+        percentage: realPercentage
+      };
+    } else if (realPercentage < 100) {
+      return {
+        label: 'En Progreso',
+        color: 'bg-blue-100 text-blue-700',
+        percentage: realPercentage
+      };
+    } else {
+      return {
+        label: 'Completado',
+        color: 'bg-success-100 text-success-700',
+        percentage: 100
+      };
+    }
+  };
+
+  const documentStatus = getDocumentStatus();
+  const countryName = country === 'MX' ? 'MX' : 'CO';
+
   return (
-    <div className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded border">
-      DEBUG: {operation.id.slice(-4)}
+    <div 
+      className={`text-xs px-2 py-1 rounded border ${documentStatus.color} whitespace-nowrap`}
+      title={`${countryName}: ${documentStatus.label} (${documentStatus.percentage}%)`}
+    >
+      {/* Versión completa para pantallas grandes */}
+      <span className="hidden sm:inline">
+        {countryName}: {documentStatus.label} ({documentStatus.percentage}%)
+      </span>
+      {/* Versión compacta para móviles */}
+      <span className="sm:hidden">
+        {countryName}: {documentStatus.percentage}%
+      </span>
     </div>
   );
 }
@@ -581,7 +646,11 @@ interface DashboardOperationCardProps {
 
 function DashboardOperationCard({ operation, onViewDetails }: DashboardOperationCardProps) {
   console.log('🎯 [DASHBOARD-CARD] Renderizando tarjeta para operación:', operation.id);
-  const statusConfig = STATUS_CONFIG[operation.status];
+  console.log('🎯 [DASHBOARD-CARD] Status de la operación:', operation.status);
+  console.log('🎯 [DASHBOARD-CARD] Fase actual del timeline:', operation.currentPhaseName);
+  
+  // Validar que el status existe en STATUS_CONFIG, sino usar un fallback
+  const statusConfig = STATUS_CONFIG[operation.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG['draft'];
   
   // Función para obtener el último estado completado del timeline
   const getLastCompletedTimelineState = () => {
@@ -614,8 +683,8 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
   
   const lastCompletedState = getLastCompletedTimelineState();
   
-  // Usar el último estado completado del timeline, sino currentPhaseName, sino el label del status config
-  const displayLabel = lastCompletedState?.name || operation.currentPhaseName || statusConfig.label;
+  // Priorizar el currentPhaseName (último estado en progreso), sino el último completado, sino el status
+  const displayLabel = operation.currentPhaseName || lastCompletedState?.name || statusConfig.label;
   
   // Configuración del badge basada en la fase del timeline o status
   const phaseConfig = lastCompletedState?.name && PHASE_CONFIG[lastCompletedState.name as TimelinePhase] 
@@ -632,124 +701,97 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
     usingPhaseConfig: !!phaseConfig
   });
   
-  // Calcular progreso basado en timeline si está disponible
-  const calculateTimelineProgress = () => {
-    if (!operation.timeline?.states || operation.timeline.states.length === 0) {
-      return operation.progress || 0;
-    }
-    
-    const totalPhases = 3; // Solicitud enviada, Estado negociación, Procesamiento de Pago
-    const completedStates = operation.timeline.states.filter(state => state.status === 'completed');
-    
-    return Math.round((completedStates.length / totalPhases) * 100);
-  };
-  
-  const timelineProgress = calculateTimelineProgress();
+  // Usar el progreso real de la operación del backend
+  const timelineProgress = operation.progress || 0;
 
   return (
     <div 
       onClick={onViewDetails}
       className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer hover:border-primary-300"
     >
-      {/* Card Header */}
-      <div className="p-4 border-b border-gray-100">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <h4 className="text-lg font-semibold text-gray-900 truncate mb-1">
-              {operation.providerName}
-            </h4>
-            <div className="flex items-center gap-2">
-              <Building className="h-4 w-4 text-gray-400" />
-              <div className="flex flex-col">
-                <span className="text-sm text-gray-600">
-                  {operation.clientName}
-                </span>
-                {operation.clientNit && (() => {
-                  const cleanNit = operation.clientNit.trim().toUpperCase();
-                  const isRFC = /^[A-ZÑ&]{3,4}[0-9]{6}[A-Z0-9]{3}$/.test(cleanNit);
-                  
-                  return (
-                    <span className={cn(
-                      "text-xs font-mono px-2 py-1 rounded",
-                      isRFC ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                    )}>
-                      {isRFC ? `RFC: ${operation.clientNit}` : `NIT: ${operation.clientNit}`}
-                    </span>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
+      {/* Card Header - Layout en 3 líneas */}
+      <div className="p-3 sm:p-4 border-b border-gray-100 space-y-2">
+        
+        {/* Línea 1: Nombre del Proveedor */}
+        <div className="w-full">
+          <h4 
+            className="text-base sm:text-lg font-semibold text-primary-700 truncate"
+            title={operation.providerName || 'Proveedor'}
+          >
+            {operation.providerName || 'Proveedor'}
+          </h4>
+        </div>
+        
+        {/* Línea 2: Subtítulo */}
+        <div className="w-full">
+          <p className="text-xs sm:text-sm text-gray-500">
+            Proveedor Internacional
+          </p>
+        </div>
+        
+        {/* Línea 3: Estado del Proceso */}
+        <div className="w-full">
           <div className={cn(
-            "px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1",
+            "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium border",
             phaseConfig.color
-          )}>
-            <BadgeIcon className="h-3 w-3" />
-            {displayLabel}
+          )}
+          title={displayLabel}
+          >
+            <BadgeIcon className="h-4 w-4 flex-shrink-0" />
+            <span className="truncate">
+              {displayLabel}
+            </span>
           </div>
         </div>
+        
       </div>
 
-      {/* Card Content */}
-      <div className="p-4 space-y-3">
-        {/* Essential Fields Grid */}
-        <div className="space-y-2 text-sm">
-          {/* Valor Total Operación - PRIMERO Y MÁS PROMINENTE */}
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600 font-medium">Valor Total:</span>
-            <span className="font-bold text-primary-600 text-base">
+      {/* Card Content - Información Esencial */}
+      <div className="p-3 sm:p-4 space-y-3">
+        <div className="space-y-3">
+          
+          {/* Valor Total de la Operación - MÁS PROMINENTE */}
+          <div className="flex items-center justify-between py-2 border-b border-gray-100">
+            <span className="text-gray-700 font-medium text-xs sm:text-sm flex items-center gap-1">
+              💰 <span className="hidden sm:inline">Valor Total:</span><span className="sm:hidden">Total:</span>
+            </span>
+            <span className="font-bold text-primary-600 text-sm sm:text-lg truncate ml-2">
               {operation.totalValue}
             </span>
           </div>
 
-          {/* Valor Compra Mercancía - Segundo */}
-          {operation.operationValue && (
-            <div className="flex items-center justify-between">
-              <span className="text-gray-500 text-xs">Valor Compra:</span>
-              <span className="text-gray-700 text-xs">
-                {operation.operationValue}
-              </span>
-            </div>
-          )}
-
-          {/* Ruta Comercial */}
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Ruta Comercial:</span>
-            <span className="font-medium text-gray-900 text-right text-xs">
-              {operation.route}
-            </span>
-          </div>
-
           {/* Persona Asignada */}
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Persona Asignada:</span>
-            <span className="font-medium text-gray-900 text-xs truncate max-w-[150px]" title={operation.assignedPerson}>
-              {operation.assignedPerson}
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-gray-600 flex items-center gap-1 text-xs sm:text-sm flex-shrink-0">
+              <Building className="h-3 w-3" />
+              <span className="hidden sm:inline">Persona Asignada:</span>
+              <span className="sm:hidden">Asignado:</span>
+            </span>
+            <span 
+              className="font-medium text-gray-900 text-xs sm:text-sm text-right truncate max-w-[120px] sm:max-w-[160px]" 
+              title={operation.assignedPerson}
+            >
+              {operation.assignedPerson || 'No asignado'}
             </span>
           </div>
 
           {/* Estado de Documentos */}
-          <div className="flex items-center justify-between">
-            <span className="text-gray-600">Documentos:</span>
-            <DocumentStatusBadge operation={operation} />
-          </div>
-
-          {/* Fecha de Actualización */}
-          {operation.updatedAt && (
-            <div className="flex items-center justify-between">
-              <span className="text-gray-600">Última Actualización:</span>
-              <span className="font-medium text-gray-900 text-xs">
-                {new Date(operation.updatedAt).toLocaleDateString('es-ES')}
-              </span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-600 flex items-center gap-1 text-xs sm:text-sm flex-shrink-0">
+              📋 <span className="hidden sm:inline">Documentos:</span><span className="sm:hidden">Docs:</span>
+            </span>
+            <div className="flex-shrink-0">
+              <DocumentStatusBadge operation={operation} />
             </div>
-          )}
+          </div>
+          
         </div>
 
-        {/* Progreso Visual */}
+        {/* Progreso Visual - Responsive */}
         <div className="pt-2">
-          <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-gray-600">Progreso</span>
-            <span className="font-semibold text-gray-900">{timelineProgress}%</span>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-600 text-xs sm:text-sm">Progreso</span>
+            <span className="font-semibold text-gray-900 text-xs sm:text-sm">{timelineProgress}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 

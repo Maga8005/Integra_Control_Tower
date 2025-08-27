@@ -179,11 +179,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       console.log('🔐 Iniciando login con NIT:', nit);
       
-      // Call backend auth endpoint
-      const response = await fetch('http://localhost:3001/api/auth/client-login', {
+      // Call Supabase edge function for client login
+      const response = await fetch(`${environment.apiBaseUrl}/client-login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          ...supabaseHeaders,
         },
         body: JSON.stringify({ nit }),
       });
@@ -216,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: `${loginData.client.nit}@client.integra.com`,
         role: loginData.client.operationsCount > 0 ? 'client_with_operations' : 'client_without_operations',
         company: loginData.client.name.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim(),
-        avatar: '/avatars/client-default.jpg',
+        avatar: undefined, // Sin avatar por ahora para evitar 404
         nit: loginData.client.nit
       };
       

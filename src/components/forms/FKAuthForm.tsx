@@ -154,13 +154,6 @@ export default function FKAuthForm({ onSuccess, className }: FKAuthFormProps) {
               {errors.nit.message}
             </p>
           )}
-          {/* NIT Helper Text */}
-          <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
-            <p className="font-medium text-blue-700 mb-1">💡 NITs de prueba disponibles:</p>
-            <p>• <code className="bg-blue-100 px-1 rounded">OOPA028673PUQ</code> - Industrial Ltd</p>
-            <p>• <code className="bg-blue-100 px-1 rounded">UPIN924835AHU</code> - Asia Exports</p>
-            <p>• <code className="bg-blue-100 px-1 rounded">BVAU461954EUD</code> - Tech Solutions</p>
-          </div>
         </div>
 
 
@@ -201,18 +194,13 @@ export default function FKAuthForm({ onSuccess, className }: FKAuthFormProps) {
           )}
         </button>
 
-        {/* Demo Information */}
+        {/* Información del Sistema */}
         <div className="mt-6 p-4 rounded-lg bg-gray-50 border border-gray-200">
           <h4 className="text-sm font-medium text-gray-700 mb-2">
             Acceso al Sistema
           </h4>
-          <div className="text-xs text-gray-600 space-y-2">
-            <p>Proporciona tu correo electrónico y NIT/RFC para acceder a tus operaciones de financiamiento.</p>
-            <div className="bg-white p-2 rounded border">
-              <p className="font-medium text-gray-700 mb-1">NITs de prueba disponibles:</p>
-              <p>• <code className="bg-gray-100 px-1 rounded">OOPA028673PUQ</code> - Industrial Ltd</p>
-              <p>• <code className="bg-gray-100 px-1 rounded">UPIN924835AHU</code> - Asia Exports</p>
-            </div>
+          <div className="text-xs text-gray-600">
+            <p>Proporciona tu correo electrónico y NIT/RFC para acceder a tus operaciones de financiamiento de importación.</p>
           </div>
         </div>
       </form>
