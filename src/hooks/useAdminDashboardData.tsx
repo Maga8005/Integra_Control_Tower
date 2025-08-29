@@ -169,7 +169,26 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
         status: mapOperationStatus(op.progresoGeneral || 0),
         currentPhaseName: getCurrentPhaseName(op.timeline),
         timeline: mapTimeline(op.timeline),
-        updatedAt: op.ultimaActualizacion || op.updatedAt
+        updatedAt: op.ultimaActualizacion || op.updatedAt,
+        // 🆕 FINANCIAL DATA
+        pagosClientes: op.pagosClientes || [],
+        costosLogisticos: op.costosLogisticos || [],
+        extracostos: op.extracostos || [],
+        reembolsos: op.reembolsos || [],
+        pagosProveedores: op.pagosProveedores || [],
+        totalPagosClientes: op.totalPagosClientes || 0,
+        totalCostosLogisticos: op.totalCostosLogisticos || 0,
+        totalExtracostos: op.totalExtracostos || 0,
+        totalReembolsos: op.totalReembolsos || 0,
+        idIntegra: op.idIntegra,
+        idsPaga: op.idsPaga,
+        // Backend field names for compatibility
+        clienteCompleto: op.clienteCompleto,
+        proveedorBeneficiario: op.proveedorBeneficiario,
+        valorOperacion: op.valorOperacion,
+        valorTotal: op.valorTotal,
+        moneda: op.moneda,
+        personaAsignada: op.personaAsignada
         }
       });
 

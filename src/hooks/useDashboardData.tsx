@@ -56,6 +56,61 @@ export interface BackendOperationCard {
   documentsData?: any[]; // NUEVO: Datos reales de documentos de la BD
   createdAt?: string;
   updatedAt?: string;
+  
+  // 🆕 FINANCIAL DATA (from backend)
+  pagosClientes?: Array<{
+    id: string;
+    timeline_step_id: number;
+    tipo_pago: string;
+    monto: number;
+    moneda: string;
+    estado: string;
+    fecha_pago: string | null;
+    descripcion: string | null;
+  }>;
+  costosLogisticos?: Array<{
+    id: string;
+    tipo_costo: string;
+    monto: number;
+    timeline_step_id: number;
+  }>;
+  extracostos?: Array<{
+    id: string;
+    concepto: string;
+    monto: number;
+    fecha_pago: string | null;
+    timeline_step_id: number;
+  }>;
+  reembolsos?: Array<{
+    id: string;
+    monto_reembolso: number;
+    fecha_pago_intercompania: string | null;
+    fecha_pago_fideicomiso: string | null;
+  }>;
+  pagosProveedores?: Array<{
+    id: string;
+    numero_pago: string;
+    valor_pagado: number;
+    porcentaje_pago: string;
+    estado: string;
+    fecha_pago_realizado: string | null;
+    fecha_solicitud: string | null;
+  }>;
+  // Financial totals
+  totalPagosClientes?: number;
+  totalCostosLogisticos?: number;
+  totalExtracostos?: number;
+  totalReembolsos?: number;
+  // Internal IDs
+  idIntegra?: string | null;
+  idsPaga?: string[] | null;
+  // Backend field names
+  clienteCompleto?: string;
+  proveedorBeneficiario?: string;
+  valorOperacion?: number;
+  valorTotal?: number;
+  moneda?: string;
+  personaAsignada?: string;
 }
 
 export interface DashboardResponse {
@@ -124,7 +179,26 @@ function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
       incotermVenta,  // NUEVO: Incoterm de venta extraído
       liberaciones: mapLiberaciones(op.liberaciones), // NUEVO: Mapear liberaciones ejecutadas
       createdAt: op.fechaCreacion,
-      updatedAt: op.ultimaActualizacion
+      updatedAt: op.ultimaActualizacion,
+      // 🆕 FINANCIAL DATA
+      pagosClientes: op.pagosClientes || [],
+      costosLogisticos: op.costosLogisticos || [],
+      extracostos: op.extracostos || [],
+      reembolsos: op.reembolsos || [],
+      pagosProveedores: op.pagosProveedores || [],
+      totalPagosClientes: op.totalPagosClientes || 0,
+      totalCostosLogisticos: op.totalCostosLogisticos || 0,
+      totalExtracostos: op.totalExtracostos || 0,
+      totalReembolsos: op.totalReembolsos || 0,
+      idIntegra: op.idIntegra,
+      idsPaga: op.idsPaga,
+      // Backend field names for compatibility
+      clienteCompleto: op.clienteCompleto,
+      proveedorBeneficiario: op.proveedorBeneficiario,
+      valorOperacion: op.valorOperacion,
+      valorTotal: op.valorTotal,
+      moneda: op.moneda,
+      personaAsignada: op.personaAsignada
     } as BackendOperationCard;
   });
 }

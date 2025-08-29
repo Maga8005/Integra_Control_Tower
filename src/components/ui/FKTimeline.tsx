@@ -18,7 +18,18 @@ import {
   RefreshCw,
   CreditCard
 } from 'lucide-react';
-import { Operation, TimelineEvent, TimelineStatus, OperationStatus } from '../../types';
+import { 
+  Operation, 
+  TimelineEvent, 
+  TimelineStatus, 
+  OperationStatus, 
+  BackendOperation,
+  PagoCliente,
+  CostoLogistico,
+  ExtracostoOperacion,
+  ReembolsoOperacion,
+  ResumenFinanciero
+} from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useDashboardData, BackendOperationCard, TimelineState, Timeline } from '../../hooks/useDashboardData';
 import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
@@ -145,6 +156,55 @@ const STATUS_STYLES = {
     lineColor: 'bg-gray-200'
   }
 } as const;
+
+// Financial data helper functions
+function getPagosByStep(pagosClientes: any[], stepId: number): any[] {
+  return pagosClientes.filter(pago => pago.timeline_step_id === stepId);
+}
+
+function getCostosByStep(costosLogisticos: any[], stepId: number): any[] {
+  return costosLogisticos.filter(costo => costo.timeline_step_id === stepId);
+}
+
+function getExtracostosByStep(extracostos: any[], stepId: number): any[] {
+  return extracostos.filter(extra => extra.timeline_step_id === stepId);
+}
+
+function getPagosProveedoresByStep(pagosProveedores: any[], stepId: number): any[] {
+  // DEBUG: Log para entender qué datos llegan
+  console.log('🏦 getPagosProveedoresByStep:', { stepId, pagosProveedoresCount: pagosProveedores?.length || 0, data: pagosProveedores });
+  
+  // Los pagos a proveedores típicamente van en el paso de "Procesamiento de Pago a Proveedor"
+  // Por ahora los mostraremos en el paso 3 (que generalmente es el de pagos)
+  if (stepId === 3) {
+    return pagosProveedores || [];
+  }
+  return [];
+}
+
+function calculateResumenFinanciero(operation: BackendOperationCard): ResumenFinanciero {
+  const pagosClientes = operation.pagosClientes || [];
+  const pagosRealizados = pagosClientes.filter((p: any) => p.estado === 'pagado');
+  const pagosPendientes = pagosClientes.filter((p: any) => p.estado !== 'pagado');
+  
+  return {
+    totalRecaudadoCliente: pagosRealizados.reduce((sum: number, p: any) => sum + (p.monto || 0), 0),
+    totalPendienteCliente: pagosPendientes.reduce((sum: number, p: any) => sum + (p.monto || 0), 0),
+    totalPagadoProveedores: operation.totalValueNumeric || 0, // Usar valor disponible
+    totalCostosLogisticos: operation.totalCostosLogisticos || 0,
+    totalExtracostos: operation.totalExtracostos || 0,
+    totalReembolsos: operation.totalReembolsos || 0
+  };
+}
+
+function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 interface FKTimelineProps {
   className?: string;
@@ -428,6 +488,19 @@ interface TimelineDisplayProps {
 }
 
 function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
+  // 🔍 DEBUG: Ver qué datos está recibiendo el componente
+  console.log('🔍 [TIMELINE DEBUG] Operation data:', {
+    id: operation.id,
+    pagosClientes: operation.pagosClientes?.length || 0,
+    pagosProveedores: operation.pagosProveedores?.length || 0,
+    costosLogisticos: operation.costosLogisticos?.length || 0,
+    extracostos: operation.extracostos?.length || 0
+  });
+  console.log('🔍 [DEBUG] TimelineDisplay - Operation data:', operation);
+  console.log('🔍 [DEBUG] pagosClientes:', operation.pagosClientes);
+  console.log('🔍 [DEBUG] costosLogisticos:', operation.costosLogisticos);
+  console.log('🔍 [DEBUG] extracostos:', operation.extracostos);
+
   // Create complete timeline using backend data when available, fallback to default steps
   const createCompleteTimeline = () => {
     const backendTimeline = operation.timeline;
@@ -515,6 +588,7 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
   };
   
   const timeline = createCompleteTimeline();
+  const resumenFinanciero = calculateResumenFinanciero(operation);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -523,17 +597,21 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold text-gray-900">
-              {operation.clientName}
+              {operation.clienteCompleto || operation.clientName}
             </h3>
-            <p className="text-base text-gray-700 mt-1">{operation.providerName}</p>
+            <p className="text-base text-gray-700 mt-1">{operation.proveedorBeneficiario || operation.providerName}</p>
             <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
               <div className="flex items-center gap-1">
                 <DollarSign className="h-4 w-4" />
-                {operation.totalValue}
+                {formatCurrency(operation.valorOperacion || operation.totalValueNumeric || 0, operation.moneda || 'USD')}
               </div>
               <div className="flex items-center gap-1">
                 <User className="h-4 w-4" />
-                {operation.assignedPerson}
+                {operation.personaAsignada || operation.assignedPerson}
+              </div>
+              <div className="flex items-center gap-1">
+                <CreditCard className="h-4 w-4" />
+                Cliente: {formatCurrency(resumenFinanciero.totalRecaudadoCliente, operation.moneda || 'USD')}
               </div>
             </div>
           </div>
@@ -553,6 +631,42 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
                 Gestionar
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Financial Summary */}
+      <div className="p-4 bg-gray-50 border-b border-gray-200">
+        <h4 className="text-sm font-medium text-gray-900 mb-3">Resumen Financiero</h4>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center">
+            <div className="text-xs text-gray-600 mb-1">Pagos Cliente</div>
+            <div className="text-sm font-semibold text-green-600">
+              {formatCurrency(resumenFinanciero.totalRecaudadoCliente, operation.moneda || 'USD')}
+            </div>
+            {resumenFinanciero.totalPendienteCliente > 0 && (
+              <div className="text-xs text-orange-600">
+                +{formatCurrency(resumenFinanciero.totalPendienteCliente, operation.moneda || 'USD')} pendiente
+              </div>
+            )}
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-gray-600 mb-1">Pagos Proveedores</div>
+            <div className="text-sm font-semibold text-blue-600">
+              {formatCurrency(resumenFinanciero.totalPagadoProveedores, operation.moneda || 'USD')}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-gray-600 mb-1">Costos Logísticos</div>
+            <div className="text-sm font-semibold text-purple-600">
+              {formatCurrency(resumenFinanciero.totalCostosLogisticos, operation.moneda || 'USD')}
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="text-xs text-gray-600 mb-1">Extracostos</div>
+            <div className="text-sm font-semibold text-red-600">
+              {formatCurrency(resumenFinanciero.totalExtracostos, operation.moneda || 'USD')}
+            </div>
           </div>
         </div>
       </div>
@@ -616,6 +730,109 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
                           {state.notes}
                         </p>
                       )}
+                      
+                      {/* Financial Information for this Step */}
+                      {(() => {
+                        const stepPagos = getPagosByStep(operation.pagosClientes || [], state.id);
+                        const stepCostos = getCostosByStep(operation.costosLogisticos || [], state.id);
+                        const stepExtracostos = getExtracostosByStep(operation.extracostos || [], state.id);
+                        const stepPagosProveedores = getPagosProveedoresByStep(operation.pagosProveedores || [], state.id);
+                        
+                        if (stepPagos.length > 0 || stepCostos.length > 0 || stepExtracostos.length > 0 || stepPagosProveedores.length > 0) {
+                          return (
+                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="text-xs font-medium text-blue-700 mb-2">Movimientos Financieros</div>
+                              
+                              {/* Pagos del Cliente */}
+                              {stepPagos.length > 0 && (
+                                <div className="mb-2">
+                                  <div className="text-xs text-blue-600 font-medium mb-1">Pagos del Cliente:</div>
+                                  {stepPagos.map((pago, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                      <span className="flex items-center gap-1">
+                                        {pago.estado === 'pagado' ? <CheckCircle className="h-3 w-3 text-green-500" /> : <Clock className="h-3 w-3 text-orange-500" />}
+                                        {pago.tipo_pago === 'cuota_operacional' ? 'Cuota Operacional' :
+                                         pago.tipo_pago === 'primer_anticipo' ? 'Primer Anticipo' :
+                                         'Segundo Anticipo'}
+                                      </span>
+                                      <span className="text-green-600 font-medium">
+                                        {pago.estado === 'pagado' ? '✓' : '⏳'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {/* Pagos a Proveedores */}
+                              {stepPagosProveedores.length > 0 && (
+                                <div className="mb-2">
+                                  <div className="text-xs text-blue-600 font-medium mb-1">Pagos a Proveedores:</div>
+                                  {stepPagosProveedores.map((pago, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                      <span className="flex items-center gap-1">
+                                        <CreditCard className="h-3 w-3 text-blue-500" />
+                                        <span>
+                                          Giro #{pago.numero_pago} - {pago.porcentaje_pago}
+                                          {pago.fecha_pago_realizado && (
+                                            <span className="text-gray-500 ml-1">
+                                              ({new Date(pago.fecha_pago_realizado).toLocaleDateString('es-ES')})
+                                            </span>
+                                          )}
+                                        </span>
+                                      </span>
+                                      <span className="text-green-600 font-medium">
+                                        {pago.fecha_pago_realizado ? '✓' : '⏳'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {/* Costos Logísticos */}
+                              {stepCostos.length > 0 && (
+                                <div className="mb-2">
+                                  <div className="text-xs text-blue-600 font-medium mb-1">Costos Logísticos:</div>
+                                  {stepCostos.map((costo, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                      <span className="flex items-center gap-1">
+                                        <Truck className="h-3 w-3 text-purple-500" />
+                                        <span>
+                                          {costo.tipo_costo === 'flete_internacional' ? 'Flete Internacional' :
+                                           costo.tipo_costo === 'gastos_destino' ? 'Gastos Destino' :
+                                           'Seguro'}
+                                        </span>
+                                      </span>
+                                      <span className="text-green-600 font-medium">
+                                        ✓
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {/* Extracostos */}
+                              {stepExtracostos.length > 0 && (
+                                <div>
+                                  <div className="text-xs text-blue-600 font-medium mb-1">Extracostos:</div>
+                                  {stepExtracostos.map((extra, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs">
+                                      <span className="flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3 text-red-500" />
+                                        <span>{extra.concepto}</span>
+                                      </span>
+                                      <span className="text-green-600 font-medium">
+                                        {extra.fecha_pago ? '✓' : '⏳'}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
+                      
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
                         {state.completedAt && (
                           <div className="flex items-center gap-1">
