@@ -124,3 +124,132 @@ export interface AdminLoginResponse {
   };
   error?: string;
 }
+
+// Financial Data Types
+export interface PagoCliente {
+  id: string;
+  operacion_id: string;
+  timeline_step_id: number;
+  tipo_pago: 'cuota_operacional' | 'primer_anticipo' | 'segundo_anticipo';
+  monto: number;
+  moneda: string;
+  fecha_pago: string | null;
+  fecha_programada: string | null;
+  estado: 'pendiente' | 'pagado' | 'vencido';
+  descripcion: string | null;
+  orden: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CostoLogistico {
+  id: string;
+  operacion_id: string;
+  tipo_costo: 'flete_internacional' | 'gastos_destino' | 'seguro';
+  monto: number;
+  moneda: string;
+  timeline_step_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExtracostoOperacion {
+  id: string;
+  operacion_id: string;
+  concepto: string;
+  monto: number;
+  moneda: string;
+  fecha_pago: string | null;
+  timeline_step_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ReembolsoOperacion {
+  id: string;
+  operacion_id: string;
+  monto_reembolso: number;
+  fecha_pago_intercompania: string | null;
+  fecha_pago_fideicomiso: string | null;
+  visible_solo_admin: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PagoProveedor {
+  id: string;
+  operacion_id: string;
+  valor_total_compra: number;
+  numero_pago: string;
+  valor_pagado: number;
+  porcentaje_pago: string;
+  estado: string;
+  fecha_solicitud: string | null;
+  fecha_pago_realizado: string | null;
+  created_at: string;
+}
+
+// Extended Operation interface with financial data
+export interface BackendOperation {
+  id: string;
+  operacionId: string;
+  clienteCompleto: string;
+  clienteNit: string;
+  proveedorBeneficiario: string;
+  valorTotal: number;
+  valorOperacion: number;
+  moneda: string;
+  monedaPago: string;
+  rutaComercial: string;
+  paisExportador: string;
+  paisImportador: string;
+  terminosPago: string;
+  incotermCompra: string;
+  incotermVenta: string;
+  inconvenientes: boolean;
+  descripcionInconvenientes: string | null;
+  nps: number | null;
+  observaciones: string | null;
+  personaAsignada: string;
+  progresoGeneral: number;
+  ultimaActualizacion: string | null;
+  createdAt: string;
+  status?: 'draft' | 'in-progress' | 'completed' | 'on-hold';
+  
+  // Related data
+  timeline: any[];
+  giros: any[];
+  pagosProveedores: PagoProveedor[];
+  entregasClientes: any[];
+  bancosProveedores: any;
+  
+  // Financial data
+  pagosClientes: PagoCliente[];
+  costosLogisticos: CostoLogistico[];
+  extracostos: ExtracostoOperacion[];
+  reembolsos?: ReembolsoOperacion[]; // Optional - only for admin
+  
+  // Internal IDs
+  idIntegra: string | null;
+  idsPaga: string[] | null;
+  
+  // Calculated totals
+  totalPagos: number;
+  totalEntregas: number;
+  totalPagosClientes: number;
+  totalCostosLogisticos: number;
+  totalExtracostos: number;
+  totalReembolsos?: number; // Optional - only for admin
+  numeroGiros: number;
+  numeroEntregas: number;
+}
+
+// Financial summary for timeline display
+export interface ResumenFinanciero {
+  totalRecaudadoCliente: number;
+  totalPendienteCliente: number;
+  totalPagadoProveedores: number;
+  totalCostosLogisticos: number;
+  totalExtracostos: number;
+  totalReembolsos?: number; // Only for admin
+}

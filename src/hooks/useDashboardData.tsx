@@ -51,8 +51,66 @@ export interface BackendOperationCard {
   incotermCompra?: string;   // NUEVO: Incoterm de compra (ej: FOB, DAP)
   incotermVenta?: string;    // NUEVO: Incoterm de venta (ej: CIF, DDP)
   liberaciones?: LiberacionEjecutada[]; // NUEVO: Liberaciones ejecutadas
+  // Real document data
+  documentCompletion?: number; // NUEVO: Porcentaje real de documentos completados
+  documentsData?: any[]; // NUEVO: Datos reales de documentos de la BD
   createdAt?: string;
   updatedAt?: string;
+  
+  // 🆕 FINANCIAL DATA (from backend)
+  pagosClientes?: Array<{
+    id: string;
+    timeline_step_id: number;
+    tipo_pago: string;
+    monto: number;
+    moneda: string;
+    estado: string;
+    fecha_pago: string | null;
+    descripcion: string | null;
+  }>;
+  costosLogisticos?: Array<{
+    id: string;
+    tipo_costo: string;
+    monto: number;
+    timeline_step_id: number;
+  }>;
+  extracostos?: Array<{
+    id: string;
+    concepto: string;
+    monto: number;
+    fecha_pago: string | null;
+    timeline_step_id: number;
+  }>;
+  reembolsos?: Array<{
+    id: string;
+    monto_reembolso: number;
+    fecha_pago_intercompania: string | null;
+    fecha_pago_fideicomiso: string | null;
+  }>;
+  pagosProveedores?: Array<{
+    id: string;
+    numero_pago: string;
+    valor_pagado: number;
+    porcentaje_pago: string;
+    estado: string;
+    fecha_pago_realizado: string | null;
+    fecha_solicitud: string | null;
+  }>;
+  // Financial totals
+  totalPagosClientes?: number;
+  totalCostosLogisticos?: number;
+  totalExtracostos?: number;
+  totalReembolsos?: number;
+  // Internal IDs
+  idIntegra?: string | null;
+  idsPaga?: string[] | null;
+  // Backend field names
+  clienteCompleto?: string;
+  proveedorBeneficiario?: string;
+  valorOperacion?: number;
+  valorTotal?: number;
+  moneda?: string;
+  personaAsignada?: string;
 }
 
 export interface DashboardResponse {
@@ -121,7 +179,26 @@ function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
       incotermVenta,  // NUEVO: Incoterm de venta extraído
       liberaciones: mapLiberaciones(op.liberaciones), // NUEVO: Mapear liberaciones ejecutadas
       createdAt: op.fechaCreacion,
-      updatedAt: op.ultimaActualizacion
+      updatedAt: op.ultimaActualizacion,
+      // 🆕 FINANCIAL DATA
+      pagosClientes: op.pagosClientes || [],
+      costosLogisticos: op.costosLogisticos || [],
+      extracostos: op.extracostos || [],
+      reembolsos: op.reembolsos || [],
+      pagosProveedores: op.pagosProveedores || [],
+      totalPagosClientes: op.totalPagosClientes || 0,
+      totalCostosLogisticos: op.totalCostosLogisticos || 0,
+      totalExtracostos: op.totalExtracostos || 0,
+      totalReembolsos: op.totalReembolsos || 0,
+      idIntegra: op.idIntegra,
+      idsPaga: op.idsPaga,
+      // Backend field names for compatibility
+      clienteCompleto: op.clienteCompleto,
+      proveedorBeneficiario: op.proveedorBeneficiario,
+      valorOperacion: op.valorOperacion,
+      valorTotal: op.valorTotal,
+      moneda: op.moneda,
+      personaAsignada: op.personaAsignada
     } as BackendOperationCard;
   });
 }
@@ -362,16 +439,91 @@ export function useDashboardData(): UseDashboardDataReturn {
     // If user is authenticated via NIT and has client operations, use those
     if (user?.nit && clientOperations && authToken && user?.role !== 'administrator') {
       console.log('✅ Usando operaciones del cliente autenticado por NIT:', clientOperations.length);
+      console.log('🔍 Datos originales de clientOperations:', clientOperations[0]); // Ver estructura de la primera operación
+      
       setIsLoading(false);
       setError(null);
-      setOperations(clientOperations);
+      
+      // Map client operations to the expected format
+      const mappedClientOperations = clientOperations.map((op: any) => {
+        console.log('🔄 Mapeando operación del cliente:', op.id, {
+          proveedorBeneficiario: op.proveedorBeneficiario,
+          valorTotal: op.valorTotal,
+          personaAsignada: op.personaAsignada,
+          status: op.status,
+          documentCompletion: op.documentCompletion,
+          documentsCount: op.documentos?.length || 0
+        });
+        
+        return {
+          id: op.id,
+          clientName: op.clienteCompleto,
+          clientNit: op.clienteNit,
+          providerName: op.proveedorBeneficiario, // MAPEO CORRECTO
+          totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`, // FORMATO CORRECTO
+          totalValueNumeric: op.valorTotal || 0,
+          operationValue: op.valorOperacion ? `$${op.valorOperacion.toLocaleString()} ${op.moneda || 'USD'}` : undefined,
+          operationValueNumeric: op.valorOperacion || 0,
+          route: op.rutaComercial || 'Ruta no especificada',
+          assignedPerson: op.personaAsignada || 'No asignado', // MAPEO CORRECTO
+          progress: op.progresoGeneral || 0,
+          status: op.status || (op.progresoGeneral >= 100 ? 'completed' : 
+                               op.progresoGeneral > 0 ? 'in-progress' : 'draft'),
+          currentPhaseName: (() => {
+            // Encontrar el último estado en progreso o el último completado
+            if (op.timeline && Array.isArray(op.timeline)) {
+              // Buscar primero el estado "en_proceso"
+              const enProceso = op.timeline.find((t: any) => t.estado === 'en_proceso');
+              if (enProceso) {
+                return enProceso.fase;
+              }
+              
+              // Si no hay en proceso, buscar el último completado
+              const completados = op.timeline.filter((t: any) => t.estado === 'completado');
+              if (completados.length > 0) {
+                return completados[completados.length - 1].fase;
+              }
+              
+              // Si no hay completados, el primer pendiente
+              const pendiente = op.timeline.find((t: any) => t.estado === 'pendiente');
+              if (pendiente) {
+                return pendiente.fase;
+              }
+            }
+            return 'Sin fase';
+          })(),
+          timeline: op.timeline ? {
+            states: op.timeline.map((t: any, index: number) => ({
+              id: index + 1,
+              name: t.fase,
+              status: t.estado === 'completado' ? 'completed' : 
+                     t.estado === 'en_proceso' ? 'in-progress' : 'pending',
+              progress: t.progreso || 0,
+              description: t.descripcion || '',
+              completedAt: t.fecha,
+              notes: t.notas
+            })),
+            currentState: op.timeline.findIndex((t: any) => t.estado === 'en_proceso') + 1 || 
+                         op.timeline.filter((t: any) => t.estado === 'completado').length,
+            overallProgress: op.progresoGeneral || 0
+          } : undefined,
+          // Real document data from database
+          documentCompletion: op.documentCompletion || 0,
+          documentsData: op.documentos || [],
+          updatedAt: op.ultimaActualizacion,
+          createdAt: op.createdAt
+        };
+      });
+      
+      console.log('✅ Operaciones del cliente mapeadas correctamente:', mappedClientOperations[0]);
+      setOperations(mappedClientOperations);
       
       // Create metadata for client operations
       setMetadata({
-        totalOperations: clientOperations.length,
+        totalOperations: mappedClientOperations.length,
         lastUpdated: new Date().toISOString(),
         processingStats: {
-          validOperations: clientOperations.length,
+          validOperations: mappedClientOperations.length,
           errorCount: 0,
           warningCount: 0
         }
