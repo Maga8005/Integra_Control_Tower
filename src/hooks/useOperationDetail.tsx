@@ -99,6 +99,66 @@ export interface BackendOperationDetail {
     errors: Array<any>;
     suggestions: Array<string>;
   };
+  
+  // 🆕 NUEVOS CAMPOS FINANCIEROS DESDE SUPABASE
+  costosLogisticos?: Array<{
+    id: string;
+    operacion_id: string;
+    tipo_costo: string;
+    descripcion: string;
+    monto: number;
+    moneda: string;
+    fecha_pago?: string;
+    estado: string;
+    created_at: string;
+  }>;
+  extracostosOperacion?: Array<{
+    id: string;
+    operacion_id: string;
+    concepto: string;
+    monto: number;
+    moneda: string;
+    fecha_pago?: string;
+    estado: string;
+    created_at: string;
+  }>;
+  reembolsosOperacion?: Array<{
+    id: string;
+    operacion_id: string;
+    monto_reembolso: number;
+    moneda: string;
+    fecha_reembolso?: string;
+    concepto: string;
+    estado: string;
+    created_at: string;
+  }>;
+  pagosClientes?: Array<{
+    id: string;
+    operacion_id: string;
+    timeline_step_id: number;
+    tipo_pago: string;
+    monto: number;
+    moneda: string;
+    estado: string;
+    orden: number;
+    fecha_pago?: string;
+    descripcion: string;
+    created_at: string;
+  }>;
+  pagosProveedores?: Array<{
+    id: string;
+    operacion_id: string;
+    numero_pago: string;
+    valor_pagado: number;
+    porcentaje_pago: string;
+    estado: string;
+    fecha_solicitud?: string;
+    fecha_pago_realizado?: string;
+    valor_total_compra?: number;
+    created_at: string;
+  }>;
+  id_integra?: string | null;
+  ids_paga?: string | null;
 }
 
 export interface OperationDetailResponse {
@@ -177,7 +237,11 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
         operationId: foundOperation.id,
         clientName: foundOperation.clienteCompleto,
         bancosProveedores: foundOperation.bancosProveedores,
-        hasBankingData: !!foundOperation.bancosProveedores
+        hasBankingData: !!foundOperation.bancosProveedores,
+        pagosClientes: foundOperation.pagosClientes?.length || 0,
+        pagosProveedores: foundOperation.pagosProveedores?.length || 0,
+        extracostos: foundOperation.extracostos?.length || 0,
+        reembolsos: foundOperation.reembolsos?.length || 0
       });
 
       // Map the operation data to match the expected interface
@@ -248,6 +312,8 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
         observaciones: foundOperation.observaciones || '',
         alertas: [],
         preciseProgress: {
+          totalProgress: foundOperation.progresoGeneral || 0,
+          completedPhases: Math.floor((foundOperation.progresoGeneral || 0) / 20),
           currentPhase: Math.floor((foundOperation.progresoGeneral || 0) / 20),
           nextPhase: foundOperation.progresoGeneral >= 100 ? null : Math.floor((foundOperation.progresoGeneral || 0) / 20) + 1,
           phaseDetails: []
@@ -257,7 +323,16 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
           warnings: [],
           errors: [],
           suggestions: []
-        }
+        },
+        
+        // 🆕 NUEVOS CAMPOS FINANCIEROS DESDE SUPABASE
+        costosLogisticos: foundOperation.costosLogisticos || [],
+        extracostosOperacion: foundOperation.extracostos || [],
+        reembolsosOperacion: foundOperation.reembolsos || [],
+        pagosClientes: foundOperation.pagosClientes || [],
+        pagosProveedores: foundOperation.pagosProveedores || [],
+        id_integra: foundOperation.idIntegra || null,
+        ids_paga: foundOperation.idsPaga || null
       };
 
       setOperation(mappedOperation);

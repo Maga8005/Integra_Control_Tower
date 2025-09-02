@@ -28,6 +28,7 @@ import { useOperationNotifications } from '../../hooks/useNotifications';
 import { useOperationDetail, BackendOperationDetail } from '../../hooks/useOperationDetail';
 import { cn } from '../../utils/cn';
 import FKDocumentsTab from './FKDocumentsTab';
+import FKFinancialTimeline from './FKFinancialTimeline';
 
 
 // Status configuration
@@ -62,7 +63,7 @@ export default function FKOperationDetail({
 }: FKOperationDetailProps) {
   const { user, hasPermission } = useAuth();
   const { notifyOperationSuccess, notifyOperationError } = useOperationNotifications();
-  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'provider' | 'documents'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'financial' | 'provider' | 'documents'>('overview');
 
   // Use optimized hook for single operation
   const { operation, isLoading, error, refetch } = useOperationDetail(operationId);
@@ -240,6 +241,7 @@ export default function FKOperationDetail({
             {[
               { id: 'overview', label: 'Resumen', icon: Building },
               { id: 'timeline', label: 'Cronograma', icon: Clock },
+              { id: 'financial', label: 'Timeline Financiero', icon: DollarSign },
               { id: 'documents', label: 'Documentos', icon: FileCheck },
               { id: 'provider', label: 'Proveedor', icon: Landmark }
             ].map(tab => {
@@ -270,6 +272,9 @@ export default function FKOperationDetail({
           )}
           {activeTab === 'timeline' && (
             <TimelineTab operation={operation} />
+          )}
+          {activeTab === 'financial' && (
+            <FinancialTab operation={operation} />
           )}
           {activeTab === 'documents' && (
             <FKDocumentsTab operation={operation} />
@@ -343,6 +348,19 @@ function OverviewTab({ operation, onStatusUpdate }: OverviewTabProps) {
               })()}
             </span>
             <p className="text-xs text-gray-500">Tipo: {operation.tipoEmpresa}</p>
+            {/* IDs Integra y Paga usando datos reales de Supabase */}
+            <div className="mt-3 space-y-1">
+              {operation.id_integra && (
+                <p className="text-xs text-gray-500">
+                  <span className="font-medium">ID Integra:</span> {operation.id_integra}
+                </p>
+              )}
+              {operation.ids_paga && (
+                <p className="text-xs text-gray-500">
+                  <span className="font-medium">IDs Paga:</span> {operation.ids_paga}
+                </p>
+              )}
+            </div>
           </div>
           <div>
             <h5 className="font-medium text-gray-700 mb-2">Proveedor (Beneficiario)</h5>
@@ -453,218 +471,22 @@ function OverviewTab({ operation, onStatusUpdate }: OverviewTabProps) {
         </div>
       </div>
 
-      {/* Información Financiera - Full Width */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-          <DollarSign className="h-5 w-5 text-success-600" />
-          Información Financiera
-        </h3>
-            
-        {/* Executive Summary */}
-        <div className="bg-gradient-to-r from-primary-50 to-primary-100 rounded-lg p-6 mb-6">
-          <h6 className="font-semibold text-primary-800 mb-4 text-base">📈 RESUMEN EJECUTIVO</h6>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
-            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-xl md:text-2xl font-bold text-primary-700 mb-1 break-words">
-                ${operation.valorTotal?.toLocaleString() || '0'} {operation.moneda || 'USD'}
-              </p>
-              <p className="text-xs md:text-sm text-primary-600 font-medium leading-tight">Total Operación</p>
-            </div>
-            
-            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-xl md:text-2xl font-bold text-gray-800 mb-1 break-words">
-                ${operation.valorOperacion?.toLocaleString() || '0'} {operation.valorOperacion ? (operation.moneda || 'USD') : ''}
-              </p>
-              <p className="text-xs md:text-sm text-gray-600 font-medium leading-tight">Compra Mercancía</p>
-            </div>
-            
-            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-xl md:text-2xl font-bold text-success-600 mb-1 break-words">
-                ${operation.montosLiberados?.toLocaleString() || '0'} {operation.montosLiberados ? (operation.moneda || 'USD') : ''}
-              </p>
-              <p className="text-xs md:text-sm text-success-600 font-medium leading-tight">Total Liberaciones</p>
-            </div>
-            
-            <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-              <p className="text-xl md:text-2xl font-bold text-coral-600 mb-1 break-words">
-                $0 {operation.moneda || 'USD'}
-              </p>
-              <p className="text-xs md:text-sm text-coral-600 font-medium leading-tight">Extracostos</p>
-          </div>
-              
-        </div>
-
-        {/* Detailed Sections */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
-              
-          {/* Giros Section */}
-          <div className="bg-coral-50 rounded-lg p-6">
-            <h6 className="font-semibold text-gray-800 mb-4 text-base flex items-center gap-2">
-              📤 GIROS A PROVEEDORES
-            </h6>
-                
-                {operation.giros && operation.giros.length > 0 ? (
-                  <>
-                    <div className="space-y-2 mb-3">
-                      {operation.giros.map((giro, index) => (
-                        <div key={index} className="bg-white/80 rounded p-2">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-gray-800">{giro.numeroGiro}</p>
-                              <p className="text-xs text-gray-600">{giro.porcentajeGiro}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-800 text-sm">
-                                ${giro.valorSolicitado.toLocaleString()}
-                              </p>
-                              <span className={cn(
-                                "text-xs px-2 py-1 rounded-full",
-                                giro.estado === 'completado' ? 'bg-success-100 text-success-700' : 
-                                giro.estado === 'en_proceso' ? 'bg-coral-100 text-coral-700' : 
-                                'bg-gray-100 text-gray-600'
-                              )}>
-                                {giro.estado === 'completado' ? 'Pagado' : 
-                                 giro.estado === 'en_proceso' ? 'Proceso' : 'Pendiente'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="border-t border-gray-200 pt-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-700">Total:</span>
-                        <span className="font-bold text-gray-800">
-                          ${operation.giros?.reduce((sum, giro) => sum + giro.valorSolicitado, 0).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-700">Pagado:</span>
-                        <span className="font-bold text-gray-800">
-                          ${operation.giros?.filter(g => g.estado === 'completado').reduce((sum, giro) => sum + giro.valorSolicitado, 0).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div 
-                          className="bg-success-500 h-1.5 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(100, (operation.giros?.filter(g => g.estado === 'completado').reduce((sum, giro) => sum + giro.valorSolicitado, 0) / operation.giros?.reduce((sum, giro) => sum + giro.valorSolicitado, 0)) * 100)}%` 
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-xs text-gray-600 italic text-center py-4">Sin giros programados</p>
-                )}
-              </div>
-
-          {/* Liberaciones Section */}
-          <div className="bg-coral-50 rounded-lg p-6">
-            <h6 className="font-semibold text-gray-800 mb-4 text-base flex items-center gap-2">
-              📥 LIBERACIONES
-            </h6>
-                
-                {operation.liberaciones && operation.liberaciones.length > 0 ? (
-                  <>
-                    <div className="space-y-2 mb-3">
-                      {operation.liberaciones.map((liberacion, index) => (
-                        <div key={liberacion.numero} className="bg-white/80 rounded p-2">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-gray-800">Liberación {liberacion.numero}</p>
-                              <p className="text-xs text-gray-600">
-                                {new Date(liberacion.fecha).toLocaleDateString('es-ES')}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-semibold text-gray-800 text-sm">
-                                ${liberacion.capital.toLocaleString()}
-                              </p>
-                              <span className={cn(
-                                "text-xs px-2 py-1 rounded-full",
-                                liberacion.estado === 'completado' ? 'bg-success-100 text-success-700' : 'bg-gray-100 text-gray-600'
-                              )}>
-                                {liberacion.estado === 'completado' ? 'Ejecutada' : 'Programada'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="border-t border-gray-200 pt-2">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-xs font-medium text-gray-700">Liberado:</span>
-                        <span className="font-bold text-gray-800">
-                          ${operation.montosLiberados?.toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div 
-                          className="bg-success-500 h-1.5 rounded-full transition-all duration-300"
-                          style={{ 
-                            width: `${Math.min(100, (operation.montosLiberados / operation.montoTotal) * 100)}%` 
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-xs text-gray-600 italic text-center py-4">Sin liberaciones ejecutadas</p>
-                )}
-              </div>
-
-          {/* Extracostos Section */}
-          <div className="bg-coral-50 rounded-lg p-6">
-            <h6 className="font-semibold text-coral-800 mb-4 text-base flex items-center gap-2">
-              💸 EXTRACOSTOS
-            </h6>
-                
-                <div className="space-y-2 mb-3">
-                  <div className="bg-white/80 rounded p-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-coral-700">Comisión bancaria:</span>
-                      <span className="font-medium text-coral-800 text-xs">
-                        $0
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white/80 rounded p-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-coral-700">Gastos logísticos:</span>
-                      <span className="font-medium text-coral-800 text-xs">
-                        $0
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-white/80 rounded p-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-coral-700">Seguro de carga:</span>
-                      <span className="font-medium text-coral-800 text-xs">
-                        $0
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="border-t border-coral-200 pt-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs font-medium text-coral-700">Total:</span>
-                    <span className="font-bold text-coral-800">
-                      $0
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+      {/* Nota: Información financiera movida a la pestaña "Timeline Financiero" */}
+      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+        <div className="flex items-center gap-3">
+          <DollarSign className="h-5 w-5 text-blue-600 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              💡 Información Financiera Completa
+            </p>
+            <p className="text-xs text-blue-700 mt-1">
+              Para ver el resumen financiero detallado, cronograma de pagos, costos logísticos, y extracostos, 
+              visita la pestaña <span className="font-semibold">"Timeline Financiero"</span>.
+            </p>
           </div>
         </div>
       </div>
+    </div>
   );
 }
 
@@ -1069,6 +891,132 @@ function ProviderTab({ operation }: ProviderTabProps) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Financial Tab Component - NUEVO
+interface FinancialTabProps {
+  operation: BackendOperationDetail;
+}
+
+function FinancialTab({ operation }: FinancialTabProps) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin' || user?.role === 'analyst';
+  
+  // Preparar datos para el timeline financiero usando datos reales de Supabase
+  const prepareFinancialSummary = () => {
+    // Agregar costos logísticos desde Supabase
+    const costosLogisticosRaw = operation.costosLogisticos || [];
+    const costosLogisticos = {
+      flete: costosLogisticosRaw.find(c => c.tipo_costo === 'flete')?.monto || 0,
+      seguro: costosLogisticosRaw.find(c => c.tipo_costo === 'seguro')?.monto || 0,
+      gastosOrigen: costosLogisticosRaw.find(c => c.tipo_costo === 'gastos_origen')?.monto || 0,
+      total: costosLogisticosRaw.reduce((sum, c) => sum + (c.monto || 0), 0),
+      fechaPago: costosLogisticosRaw.find(c => c.fecha_pago)?.fecha_pago,
+      estado: costosLogisticosRaw.length > 0 ? costosLogisticosRaw[0].estado : 'pendiente'
+    };
+
+    // Mapear extracostos desde Supabase
+    const extracostos = (operation.extracostosOperacion || []).map((e) => ({
+      concepto: e.concepto,
+      monto: e.monto,
+      fechaPago: e.fecha_pago,
+      estado: e.estado
+    }));
+
+    // Mapear reembolsos desde Supabase (solo para admin)
+    const reembolsos = isAdmin ? (operation.reembolsosOperacion || []).map((r) => ({
+      concepto: r.concepto,
+      monto: r.monto_reembolso,
+      fechaReembolso: r.fecha_reembolso,
+      estado: r.estado
+    })) : [];
+
+    // Calcular cuota operacional (10% del valor total)
+    const cuotaOperacional = operation.valorTotal ? {
+      monto: Math.round(operation.valorTotal * 0.1),
+      estado: operation.progresoGeneral > 16.67 ? 'completado' : 'pendiente'
+    } : undefined;
+
+    // Calcular segundo avance (basado en progreso)
+    const avanceSegundo = operation.valorTotal && operation.progresoGeneral > 50 ? {
+      monto: Math.round(operation.valorTotal * 0.15), // Estimado 15%
+      estado: operation.progresoGeneral > 66.67 ? 'completado' : 'en_proceso'
+    } : undefined;
+
+    const totalPagado = (cuotaOperacional?.estado === 'completado' ? cuotaOperacional.monto : 0) +
+                       (avanceSegundo?.estado === 'completado' ? avanceSegundo.monto : 0) +
+                       (costosLogisticos.estado_pago === 'completado' ? costosLogisticos.total_logisticos : 0) +
+                       extracostos.filter(e => e.estado === 'completado').reduce((sum, e) => sum + e.monto, 0);
+
+    const totalPendiente = operation.valorTotal - totalPagado;
+
+    return {
+      valorOperacion: operation.valorTotal || 0,
+      cuotaOperacional,
+      avanceSegundo,
+      costosLogisticos: {
+        flete: costosLogisticos.flete,
+        seguro: costosLogisticos.seguro,
+        gastosOrigen: costosLogisticos.gastos_origen,
+        total: costosLogisticos.total_logisticos,
+        fechaPago: costosLogisticos.fecha_pago,
+        estado: costosLogisticos.estado_pago
+      },
+      extracostos,
+      reembolsos,
+      totalPagado,
+      totalPendiente: Math.max(0, totalPendiente)
+    };
+  };
+
+  const resumenFinanciero = prepareFinancialSummary();
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-gray-900">Timeline de Pagos y Financiamiento</h4>
+        <div className="text-sm text-gray-500">
+          Sistema de seguimiento financiero detallado
+        </div>
+      </div>
+
+      {/* Información de IDs de seguimiento usando datos reales de Supabase */}
+      {(operation.id_integra || operation.ids_paga) && (
+        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <h5 className="text-sm font-medium text-blue-900 mb-2">🔗 Identificadores de Seguimiento</h5>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {operation.id_integra && (
+              <div className="bg-white rounded p-3">
+                <p className="text-xs text-blue-600 font-medium">ID Integra</p>
+                <p className="text-sm font-mono text-blue-900">{operation.id_integra}</p>
+              </div>
+            )}
+            {operation.ids_paga && (
+              <div className="bg-white rounded p-3">
+                <p className="text-xs text-blue-600 font-medium">IDs Paga</p>
+                <p className="text-sm font-mono text-blue-900">{operation.ids_paga}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Timeline financiero integrado con datos reales de Supabase */}
+      <FKFinancialTimeline
+        operationId={operation.id}
+        resumenFinanciero={resumenFinanciero}
+        costosLogisticos={operation.costosLogisticos || []}
+        extracostosOperacion={operation.extracostosOperacion || []}
+        reembolsosOperacion={operation.reembolsosOperacion || []}
+        pagosClientes={operation.pagosClientes || []}
+        pagosProveedores={operation.pagosProveedores || []}
+        giros={operation.giros || []}
+        liberaciones={operation.liberaciones || []}
+        timeline={operation.timeline || []}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
