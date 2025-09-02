@@ -184,8 +184,8 @@ function getPagosProveedoresByStep(pagosProveedores: any[], stepId: number): any
 
 function calculateResumenFinanciero(operation: BackendOperationCard): ResumenFinanciero {
   const pagosClientes = operation.pagosClientes || [];
-  const pagosRealizados = pagosClientes.filter((p: any) => p.estado === 'pagado');
-  const pagosPendientes = pagosClientes.filter((p: any) => p.estado !== 'pagado');
+  const pagosRealizados = pagosClientes.filter((p: any) => p.estado === 'pagado' || p.estado === 'completado' || p.fecha_pago);
+  const pagosPendientes = pagosClientes.filter((p: any) => !(p.estado === 'pagado' || p.estado === 'completado' || p.fecha_pago));
   
   return {
     totalRecaudadoCliente: pagosRealizados.reduce((sum: number, p: any) => sum + (p.monto || 0), 0),
@@ -738,25 +738,49 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
                         const stepExtracostos = getExtracostosByStep(operation.extracostos || [], state.id);
                         const stepPagosProveedores = getPagosProveedoresByStep(operation.pagosProveedores || [], state.id);
                         
-                        if (stepPagos.length > 0 || stepCostos.length > 0 || stepExtracostos.length > 0 || stepPagosProveedores.length > 0) {
+                        // ✅ REGLAS ESPECÍFICAS POR FASE
+                        let showFinancialMovements = false;
+                        let filteredPagos = stepPagos;
+                        let filteredExtracostos = stepExtracostos;
+                        
+                        if (state.name === 'Solicitud enviada') {
+                          // Solo mostrar Cuota Operacional y Primer Anticipo (NO extracostos)
+                          filteredPagos = stepPagos.filter(pago => 
+                            pago.tipo_pago === 'cuota_operacional' || pago.tipo_pago === 'primer_anticipo'
+                          );
+                          filteredExtracostos = []; // No mostrar extracostos en esta fase
+                          showFinancialMovements = filteredPagos.length > 0;
+                        } else if (state.name === 'Estado negociación' || state.name.toLowerCase().includes('negociación')) {
+                          // No mostrar movimientos financieros en estado de negociación
+                          showFinancialMovements = false;
+                        } else if (state.name === 'Procesamiento de Pago a Proveedor' || state.name.toLowerCase().includes('procesamiento')) {
+                          // Mostrar Segundo Anticipo y Pagos a Proveedores
+                          filteredPagos = stepPagos.filter(pago => pago.tipo_pago === 'segundo_anticipo');
+                          showFinancialMovements = filteredPagos.length > 0 || stepPagosProveedores.length > 0 || stepCostos.length > 0 || filteredExtracostos.length > 0;
+                        } else {
+                          // Para otras fases, mostrar todo
+                          showFinancialMovements = stepPagos.length > 0 || stepCostos.length > 0 || stepExtracostos.length > 0 || stepPagosProveedores.length > 0;
+                        }
+                        
+                        if (showFinancialMovements) {
                           return (
                             <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                               <div className="text-xs font-medium text-blue-700 mb-2">Movimientos Financieros</div>
                               
                               {/* Pagos del Cliente */}
-                              {stepPagos.length > 0 && (
+                              {filteredPagos.length > 0 && (
                                 <div className="mb-2">
                                   <div className="text-xs text-blue-600 font-medium mb-1">Pagos del Cliente:</div>
-                                  {stepPagos.map((pago, idx) => (
+                                  {filteredPagos.map((pago, idx) => (
                                     <div key={idx} className="flex items-center justify-between text-xs">
                                       <span className="flex items-center gap-1">
-                                        {pago.estado === 'pagado' ? <CheckCircle className="h-3 w-3 text-green-500" /> : <Clock className="h-3 w-3 text-orange-500" />}
+                                        {(pago.estado === 'pagado' || pago.estado === 'completado' || pago.fecha_pago) ? <CheckCircle className="h-3 w-3 text-green-500" /> : <Clock className="h-3 w-3 text-orange-500" />}
                                         {pago.tipo_pago === 'cuota_operacional' ? 'Cuota Operacional' :
                                          pago.tipo_pago === 'primer_anticipo' ? 'Primer Anticipo' :
                                          'Segundo Anticipo'}
                                       </span>
                                       <span className="text-green-600 font-medium">
-                                        {pago.estado === 'pagado' ? '✓' : '⏳'}
+                                        {(pago.estado === 'pagado' || pago.estado === 'completado' || pago.fecha_pago) ? '✓' : '⏳'}
                                       </span>
                                     </div>
                                   ))}
@@ -811,10 +835,10 @@ function TimelineDisplay({ operation, canEdit }: TimelineDisplayProps) {
                               )}
                               
                               {/* Extracostos */}
-                              {stepExtracostos.length > 0 && (
+                              {filteredExtracostos.length > 0 && (
                                 <div>
                                   <div className="text-xs text-blue-600 font-medium mb-1">Extracostos:</div>
-                                  {stepExtracostos.map((extra, idx) => (
+                                  {filteredExtracostos.map((extra, idx) => (
                                     <div key={idx} className="flex items-center justify-between text-xs">
                                       <span className="flex items-center gap-1">
                                         <AlertCircle className="h-3 w-3 text-red-500" />

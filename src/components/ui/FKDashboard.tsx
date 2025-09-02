@@ -760,6 +760,16 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
             </span>
           </div>
 
+          {/* NUEVO: Indicador de Estado de Pagos */}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-gray-600 flex items-center gap-1 text-xs sm:text-sm flex-shrink-0">
+              💳 <span className="hidden sm:inline">Estado Financiero:</span><span className="sm:hidden">Pagos:</span>
+            </span>
+            <div className="flex-shrink-0">
+              <FinancialStatusIndicator operation={operation} />
+            </div>
+          </div>
+
           {/* Persona Asignada */}
           <div className="flex items-start justify-between gap-2">
             <span className="text-gray-600 flex items-center gap-1 text-xs sm:text-sm flex-shrink-0">
@@ -804,6 +814,70 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// NUEVO: Componente indicador de estado financiero
+interface FinancialStatusIndicatorProps {
+  operation: BackendOperationCard;
+}
+
+function FinancialStatusIndicator({ operation }: FinancialStatusIndicatorProps) {
+  // Calcular estado financiero basado en los datos disponibles
+  const getFinancialStatus = () => {
+    const progress = operation.progress || 0;
+    
+    // Determinar el estado de pagos basado en el progreso y datos disponibles
+    if (progress >= 100) {
+      return {
+        label: 'Completado',
+        color: 'bg-success-100 text-success-700',
+        icon: '✅'
+      };
+    } else if (progress >= 66.67) {
+      return {
+        label: 'Avanzado',
+        color: 'bg-blue-100 text-blue-700',
+        icon: '🔄'
+      };
+    } else if (progress >= 33.33) {
+      return {
+        label: 'Iniciado',
+        color: 'bg-yellow-100 text-yellow-700',
+        icon: '⚡'
+      };
+    } else if (progress >= 16.67) {
+      return {
+        label: 'Cuota Inicial',
+        color: 'bg-orange-100 text-orange-700',
+        icon: '💰'
+      };
+    } else {
+      return {
+        label: 'Pendiente',
+        color: 'bg-gray-100 text-gray-600',
+        icon: '⏸️'
+      };
+    }
+  };
+
+  const statusInfo = getFinancialStatus();
+
+  return (
+    <div 
+      className={`text-xs px-2 py-1 rounded border ${statusInfo.color} whitespace-nowrap flex items-center gap-1`}
+      title={`Estado de pagos: ${statusInfo.label}`}
+    >
+      <span>{statusInfo.icon}</span>
+      {/* Versión completa para pantallas grandes */}
+      <span className="hidden sm:inline">
+        {statusInfo.label}
+      </span>
+      {/* Versión compacta para móviles */}
+      <span className="sm:hidden">
+        {statusInfo.label.split(' ')[0]}
+      </span>
     </div>
   );
 }

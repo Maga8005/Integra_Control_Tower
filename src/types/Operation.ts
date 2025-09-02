@@ -121,7 +121,44 @@ export interface Proveedor {
   created_at: string;
 }
 
-// Interface para extracostos
+// Interface para costos logísticos (nueva tabla costos_logisticos)
+export interface CostosLogisticos {
+  id: string;
+  operacion_id: string;
+  flete: number;
+  seguro: number;
+  gastos_origen: number;
+  total_logisticos: number;
+  fecha_pago?: string;
+  estado_pago: EstadoProceso;
+  created_at: string;
+}
+
+// Interface para extracostos de operación (nueva tabla extracostos_operacion)
+export interface ExtracostosOperacion {
+  id: string;
+  operacion_id: string;
+  concepto: string;
+  valor: number;
+  moneda: Currency;
+  fecha_pago?: string;
+  estado_pago: EstadoProceso;
+  created_at: string;
+}
+
+// Interface para reembolsos de operación (nueva tabla reembolso_operacion - solo admin)
+export interface ReembolsoOperacion {
+  id: string;
+  operacion_id: string;
+  monto_reembolso: number;
+  moneda: Currency;
+  fecha_reembolso?: string;
+  concepto: string;
+  estado_reembolso: EstadoProceso;
+  created_at: string;
+}
+
+// Interface para extracostos (legacy - mantener compatibilidad)
 export interface Extracostos {
   comisionBancaria: number;
   gastosLogisticos: number;
@@ -177,6 +214,10 @@ export interface OperationDetail {
   operacionId?: string; // ID del CSV
   numeroOperacion: string;
   
+  // NUEVOS: Identificadores Integra y Paga
+  id_integra?: string;
+  ids_paga?: string;
+  
   // Información Básica
   clienteCompleto: string;
   clienteNit: string; // NUEVO: NIT/RFC del cliente extraído de Docu. Cliente
@@ -218,6 +259,11 @@ export interface OperationDetail {
   pagosProveedores?: PagoProveedor[];
   entregasClientes?: EntregaCliente[];
   bancosProveedores?: BancoProveedor | null;
+  
+  // NUEVOS: Datos financieros detallados
+  costosLogisticos?: CostosLogisticos;
+  extracostosOperacion?: ExtracostosOperacion[];
+  reembolsosOperacion?: ReembolsoOperacion[]; // Solo visible para admin
   
   // Estadísticas calculadas
   totalPagos?: number;
@@ -326,4 +372,55 @@ export interface DashboardMetrics {
   promedioTiempoProceso: number;
   operacionesPorEstado: Record<EstadoProceso, number>;
   alertasPendientes: number;
+}
+
+// NUEVAS: Interfaces para timeline financiero
+export interface FinancialTimelineEvent {
+  id: string;
+  tipo: 'cuota_operacional' | 'primer_anticipo' | 'segundo_anticipo' | 'pago_proveedor' | 'pago_logistico' | 'liberacion' | 'extracosto' | 'reembolso';
+  descripcion: string;
+  monto: number;
+  moneda: Currency;
+  fecha_planificada?: string;
+  fecha_real?: string;
+  fecha_solicitud?: string;
+  estado: EstadoProceso;
+  milestone_operacional?: string; // Relación con fase operacional
+}
+
+// Interface para resumen financiero consolidado
+export interface ResumenFinanciero {
+  valorOperacion: number;
+  cuotaOperacional?: {
+    monto: number;
+    fecha?: string;
+    estado: EstadoProceso;
+  };
+  avanceSegundo?: {
+    monto: number;
+    fecha?: string;
+    estado: EstadoProceso;
+  };
+  costosLogisticos: {
+    flete: number;
+    seguro: number;
+    gastosOrigen: number;
+    total: number;
+    fechaPago?: string;
+    estado: EstadoProceso;
+  };
+  extracostos: Array<{
+    concepto: string;
+    monto: number;
+    fechaPago?: string;
+    estado: EstadoProceso;
+  }>;
+  reembolsos?: Array<{ // Solo para admin
+    concepto: string;
+    monto: number;
+    fechaReembolso?: string;
+    estado: EstadoProceso;
+  }>;
+  totalPagado: number;
+  totalPendiente: number;
 }
