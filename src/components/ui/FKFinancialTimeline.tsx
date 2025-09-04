@@ -291,14 +291,14 @@ export default function FKFinancialTimeline({
   console.log('🔍 [EXTRACOSTOS FILTRADOS] Resultados:', {
     totalOriginal: extracostosOperacion?.length || 0,
     extracostosValidos: extracostosValidos.length,
-    extracostosExcluidos: extracostosExcluidos.length,
+    extracostosExcluidosCount: extracostosExcluidos.length,
     totalFiltrado: extracostosValidos.reduce((sum, e) => sum + (e.monto || 0), 0),
     totalExcluido: extracostosExcluidos.reduce((sum, e) => sum + (e.monto || 0), 0),
     extracostosVálidos: extracostosValidos.map(e => ({
       concepto: e.concepto,
       monto: e.monto
     })),
-    extracostosExcluidos: extracostosExcluidos.map(e => ({
+    extracostosExcluidosDetalle: extracostosExcluidos.map(e => ({
       id: e.id,
       concepto: e.concepto || '(sin concepto)',
       monto: e.monto,

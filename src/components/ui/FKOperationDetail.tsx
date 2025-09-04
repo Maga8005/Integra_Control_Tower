@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -29,6 +29,8 @@ import { useOperationDetail, BackendOperationDetail } from '../../hooks/useOpera
 import { cn } from '../../utils/cn';
 import FKDocumentsTab from './FKDocumentsTab';
 import FKFinancialTimeline from './FKFinancialTimeline';
+import FKNPSModal from './FKNPSModal';
+import { useNPS } from '../../hooks/useNPS';
 
 
 // Status configuration
@@ -68,6 +70,25 @@ export default function FKOperationDetail({
   // Use optimized hook for single operation
   const { operation, isLoading, error, refetch } = useOperationDetail(operationId);
 
+  // 🆕 Sistema NPS integrado
+  const nps = useNPS({
+    operationId: operationId,
+    clientId: operation?.clienteNit || '',
+    country: (() => {
+      const pais = operation?.paisImportador?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return (pais === 'colombia') ? 'COL' : 'MEX';
+    })(),
+    currentProgress: operation?.progresoGeneral || 0
+  });
+
+  // 🔍 Debug para verificar estado del modal
+  React.useEffect(() => {
+    console.log(`🎭 [MODAL STATE] Modal state changed:`, {
+      isModalOpen: nps.isModalOpen,
+      currentStage: nps.currentStage,
+      operationId
+    });
+  }, [nps.isModalOpen, nps.currentStage, operationId]);
 
   // Handle status update
   const handleStatusUpdate = (newStatus: string) => {
@@ -274,7 +295,7 @@ export default function FKOperationDetail({
             <TimelineTab operation={operation} />
           )}
           {activeTab === 'financial' && (
-            <FinancialTab operation={operation} />
+            <FinancialTab operation={operation} nps={nps} operationId={operationId} />
           )}
           {activeTab === 'documents' && (
             <FKDocumentsTab operation={operation} />
@@ -898,9 +919,11 @@ function ProviderTab({ operation }: ProviderTabProps) {
 // Financial Tab Component - NUEVO
 interface FinancialTabProps {
   operation: BackendOperationDetail;
+  nps: ReturnType<typeof useNPS>;
+  operationId: string;
 }
 
-function FinancialTab({ operation }: FinancialTabProps) {
+function FinancialTab({ operation, nps, operationId }: FinancialTabProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'analyst';
   
@@ -1017,6 +1040,38 @@ function FinancialTab({ operation }: FinancialTabProps) {
         timeline={operation.timeline || []}
         isAdmin={isAdmin}
       />
+
+      {/* 🆕 Modal NPS Contextual */}
+      {(() => {
+        console.log(`🎭 [MODAL DEBUG] Props del modal NPS:`, {
+          isOpen: nps.isModalOpen,
+          currentStage: nps.currentStage,
+          operationId,
+          clientId: operation?.clienteNit || '',
+          progressPercentage: operation?.progresoGeneral || 0,
+          country: (() => {
+            const pais = operation?.paisImportador?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return (pais === 'colombia') ? 'COL' : 'MEX';
+          })()
+        });
+        return null;
+      })()}
+      {/* 🎯 Modal NPS - Solo para clientes, NO para administradores */}
+      {nps.isNPSEnabled && (
+        <FKNPSModal
+          isOpen={nps.isModalOpen}
+          onClose={nps.closeModal}
+          operationId={operationId}
+          clientId={operation?.clienteNit || ''}
+          stage={nps.currentStage || 'inicio'}
+          progressPercentage={operation?.progresoGeneral || 0}
+          country={(() => {
+            const pais = operation?.paisImportador?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return (pais === 'colombia') ? 'COL' : 'MEX';
+          })()}
+          onSubmit={nps.submitNPSResponse}
+        />
+      )}
     </div>
   );
 }
