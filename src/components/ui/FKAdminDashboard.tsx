@@ -22,7 +22,9 @@ import {
   FileText,
   CheckCircle2,
   Truck,
-  Circle
+  Circle,
+  Star,
+  MessageSquare
 } from 'lucide-react';
 import { useAdminDashboardData } from '../../hooks/useAdminDashboardData';
 import { useClientDocuments } from '../../hooks/useClientDocuments';
@@ -30,6 +32,7 @@ import { getCountryFromOperation } from '../../types/Documents';
 import { cn } from '../../utils/cn';
 import { useState, useMemo } from 'react';
 import { environment, supabaseHeaders } from '../../config/environment';
+import FKNPSAnalytics from './FKNPSAnalytics';
 
 // Timeline phases mapping - 5 fases en orden secuencial
 const TIMELINE_PHASES = [
@@ -216,6 +219,9 @@ export default function FKAdminDashboard() {
     const savedCountry = sessionStorage.getItem('integra_selectedCountry');
     return (savedCountry === 'MX' || savedCountry === 'CO') ? savedCountry : 'CO';
   });
+  
+  // Tab state for admin sections
+  const [activeTab, setActiveTab] = useState<'operations' | 'nps'>('operations');
   
   const { operations, isLoading, error, metadata, refetch } = useAdminDashboardData(selectedCountry);
   
@@ -449,56 +455,91 @@ export default function FKAdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Admin Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Total Operaciones</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalOperations}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Completadas</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.completedOperations}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Clock className="h-6 w-6 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">En Progreso</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.inProgressOperations}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Users className="h-6 w-6 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600">Clientes Únicos</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.uniqueClients}</p>
-            </div>
-          </div>
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8 px-6">
+            <button
+              onClick={() => setActiveTab('operations')}
+              className={cn(
+                "py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2",
+                activeTab === 'operations'
+                  ? "border-primary-500 text-primary-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              )}
+            >
+              <Shield className="h-4 w-4" />
+              Panel de Operaciones
+            </button>
+            <button
+              onClick={() => setActiveTab('nps')}
+              className={cn(
+                "py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2",
+                activeTab === 'nps'
+                  ? "border-primary-500 text-primary-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              )}
+            >
+              <Star className="h-4 w-4" />
+              Analytics NPS
+            </button>
+          </nav>
         </div>
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'operations' ? (
+        <>
+          {/* Admin Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <BarChart3 className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total Operaciones</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalOperations}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Completadas</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.completedOperations}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">En Progreso</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.inProgressOperations}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Users className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Clientes Únicos</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.uniqueClients}</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
       {/* Operations Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">
@@ -836,6 +877,11 @@ export default function FKAdminDashboard() {
             </span>
           </div>
         </div>
+      )}
+        </>
+      ) : (
+        /* NPS Analytics Tab */
+        <FKNPSAnalytics />
       )}
     </div>
   );
