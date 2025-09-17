@@ -2,6 +2,18 @@
 
 **Extends**: Enterprise Base Template (claude-base.md)
 
+## IMPORTANT: Archivos Activos vs Backups
+
+### Archivos ACTIVOS (usar estos siempre):
+- **Función CSV Parser**: `backend/supabase/functions/upload-csv-with-parser/index.ts`
+  - Esta es la función Edge de Supabase que procesa los CSVs
+  - NO usar los archivos en la raíz: upload-csv-with-parser-*.ts (son backups/histórico)
+
+### Archivos de BACKUP (ignorar):
+- `/upload-csv-with-parser-final.ts` - Backup/histórico
+- `/upload-csv-with-parser-fixed.ts` - Backup/histórico
+- `/upload-csv-with-parser-json-fixed.ts` - Backup/histórico
+
 ## MVP CONTEXT
 Build a web application foundation for testing user experience with import financing operations. Priority: Fast user validation while maintaining enterprise standards for future scalability.
 

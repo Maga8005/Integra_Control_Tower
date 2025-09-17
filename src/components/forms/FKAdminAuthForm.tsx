@@ -201,7 +201,8 @@ export default function FKAdminAuthForm({ onSuccess, onBackToClient, className }
           </button>
         )}
 
-        {/* Demo Information for MVP */}
+        {/* Demo Information for MVP - COMENTADO PARA PRODUCCIÓN */}
+        {/*
         <div className="mt-6 p-4 rounded-lg bg-orange-50 border border-orange-200">
           <h4 className="text-sm font-medium text-orange-700 mb-2">
             🔧 Credenciales de Administrador (MVP)
@@ -212,6 +213,7 @@ export default function FKAdminAuthForm({ onSuccess, onBackToClient, className }
             <p className="text-orange-500 mt-2">⚠️ Solo para desarrollo - no usar en producción</p>
           </div>
         </div>
+        */}
       </form>
     </div>
   );

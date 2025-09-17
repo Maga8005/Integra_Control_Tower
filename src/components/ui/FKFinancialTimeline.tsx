@@ -27,28 +27,28 @@ import { cn } from '../../utils/cn';
 // Configuración de iconos y colores por tipo de evento financiero
 const FINANCIAL_EVENT_CONFIG = {
   cuota_operacional: {
-    label: 'Cuota Operacional (10%)',
+    label: 'Cuota Operacional',
     icon: CreditCard,
     color: 'bg-blue-100 text-blue-700 border-blue-200',
     iconColor: 'text-blue-600',
     milestone: 'Solicitud Enviada'
   },
   primer_anticipo: {
-    label: 'Primer Anticipo',
+    label: 'Primer Anticipo (10%)',
     icon: CreditCard,
     color: 'bg-blue-100 text-blue-700 border-blue-200',
     iconColor: 'text-blue-600',
     milestone: 'Solicitud Enviada'
   },
   pago_proveedor: {
-    label: 'Pago a Proveedor',
+    label: 'Giro a Proveedor',
     icon: Building2,
     color: 'bg-indigo-100 text-indigo-700 border-indigo-200',
     iconColor: 'text-indigo-600',
     milestone: 'Procesamiento de Pago'
   },
   segundo_anticipo: {
-    label: 'Segundo Anticipo',
+    label: 'Segundo Anticipo (10%)',
     icon: TrendingUp,
     color: 'bg-green-100 text-green-700 border-green-200',
     iconColor: 'text-green-600',
@@ -69,7 +69,7 @@ const FINANCIAL_EVENT_CONFIG = {
     milestone: 'Post Embarque'
   },
   liberacion: {
-    label: 'Liberación de Fondos',
+    label: 'Entrega de Mercancía',
     icon: DollarSign,
     color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
     iconColor: 'text-emerald-600',
@@ -139,6 +139,8 @@ const STATUS_CONFIG = {
 
 interface FKFinancialTimelineProps {
   operationId: string;
+  moneda?: string;
+  proveedorBeneficiario?: string;
   resumenFinanciero: ResumenFinanciero;
   costosLogisticos?: Array<{
     id: string;
@@ -146,6 +148,8 @@ interface FKFinancialTimelineProps {
     tipo_costo: string;
     descripcion: string;
     monto: number;
+    estado?: string;
+    fecha_pago?: string;
   }>;
   extracostosOperacion?: ExtracostosOperacion[];
   reembolsosOperacion?: ReembolsoOperacion[];
@@ -161,6 +165,7 @@ interface FKFinancialTimelineProps {
     id?: string;
     numeroGiro?: string;
     numero_pago?: string;
+    nombre_proveedor?: string;
     valorSolicitado?: number;
     valor_pagado?: number;
     porcentajeGiro?: string;
@@ -195,10 +200,14 @@ interface FKFinancialTimelineProps {
   }>;
   isAdmin?: boolean;
   className?: string;
+  idIntegra?: string | null;
+  idsPaga?: string | null;
 }
 
 export default function FKFinancialTimeline({
   operationId,
+  moneda = 'USD',
+  proveedorBeneficiario,
   resumenFinanciero,
   costosLogisticos,
   extracostosOperacion = [],
@@ -209,7 +218,9 @@ export default function FKFinancialTimeline({
   liberaciones = [],
   timeline = [],
   isAdmin = false,
-  className
+  className,
+  idIntegra = null,
+  idsPaga = null
 }: FKFinancialTimelineProps) {
   const [showReimbursements, setShowReimbursements] = useState(false);
 
@@ -347,7 +358,7 @@ export default function FKFinancialTimeline({
       events.push({
         id: `cuota-${cuotaOperacional.id}`,
         tipo: 'cuota_operacional',
-        descripcion: 'Cuota Operacional (10% del valor total)',
+        descripcion: 'Cuota Operacional',
         monto: cuotaOperacional.monto,
         moneda: cuotaOperacional.moneda || Currency.USD,
         fecha_real: cuotaOperacional.fecha_pago || undefined,
@@ -374,7 +385,7 @@ export default function FKFinancialTimeline({
       events.push({
         id: `primer-anticipo-${primerAnticipo.id}`,
         tipo: 'primer_anticipo',
-        descripcion: 'Primer Anticipo del Cliente',
+        descripcion: 'Primer Anticipo - 10% del valor total',
         monto: primerAnticipo.monto,
         moneda: primerAnticipo.moneda || Currency.USD,
         fecha_real: primerAnticipo.fecha_pago || undefined,
@@ -485,13 +496,13 @@ export default function FKFinancialTimeline({
       events.push({
         id: `pago-proveedor-${pago.id || numeroPago}`,
         tipo: 'pago_proveedor',
-        descripcion: `Pago a Proveedor #${numeroPago}${porcentajePago ? ` (${porcentajePago})` : ''} - Mercancía`,
+        descripcion: `Pago #${numeroPago}${porcentajePago ? ` (${porcentajePago})` : ''} - ${pago.nombre_proveedor || proveedorBeneficiario || 'Proveedor'}`,
         monto: valorPago,
         moneda: Currency.USD,
         fecha_real: pago.fecha_pago_realizado || pago.fechaPago || undefined,
         fecha_solicitud: pago.fecha_solicitud || undefined,
         estado: estadoFinal, // 🆕 Estado determinado por fechas
-        milestone_operacional: 'Procesamiento de Pago a Proveedor'
+        milestone_operacional: 'Giros a Proveedor'
       });
       
       // ✅ DESPUÉS DEL PRIMER PAGO A PROVEEDOR → Agregar segundo anticipo
@@ -506,12 +517,12 @@ export default function FKFinancialTimeline({
         events.push({
           id: `segundo-anticipo-${segundoAnticipo.id}`,
           tipo: 'segundo_anticipo',
-          descripcion: 'Segundo Anticipo del Cliente',
+          descripcion: 'Segundo Anticipo - 10% del valor total',
           monto: segundoAnticipo.monto,
           moneda: segundoAnticipo.moneda || Currency.USD,
           fecha_real: segundoAnticipo.fecha_pago || undefined,
           estado: estadoSegundoAnticipo, // 🆕 Estado determinado por fechas
-          milestone_operacional: 'Procesamiento de Pago a Proveedor'
+          milestone_operacional: 'Giros a Proveedor'
         });
       }
     });
@@ -531,7 +542,7 @@ export default function FKFinancialTimeline({
         events.push({
           id: `logistico-${costo.id || `${operationId}-${index}`}`,
           tipo: 'pago_logistico',
-          descripcion: `${costo.tipo_costo}: ${costo.descripcion || 'Pago Logístico'}`,
+          descripcion: costo.descripcion || costo.tipo_costo || 'Pago Logístico',
           monto: costo.monto,
           moneda: (costo.moneda as Currency) || Currency.USD,
           fecha_real: costo.fecha_pago,
@@ -554,7 +565,7 @@ export default function FKFinancialTimeline({
         events.push({
           id: `liberacion-${index + 1}`,
           tipo: 'liberacion',
-          descripcion: `Liberación #${liberacion.numero} - Entrega de Fondos al Cliente`,
+          descripcion: `Entrega #${liberacion.numero} - Mercancía al Cliente`,
           monto: liberacion.capital,
           moneda: Currency.USD,
           fecha_real: liberacion.fecha,
@@ -618,19 +629,80 @@ export default function FKFinancialTimeline({
 
   // 🆕 CALCULAR TOTALES REALES BASADOS EN DATOS DE BD
   const totalPagadoReal = useMemo(() => {
-    const totalPagosClientes = pagosClientes?.reduce((sum, p) => sum + (p.monto || 0), 0) || 0;
-    const totalGirosProveedor = pagosProveedores?.reduce((sum, p) => sum + (p.valor_pagado || p.valorSolicitado || 0), 0) || 0;
+    // Solo incluir pagos de clientes que estén completados/pagados
+    const totalPagosClientes = pagosClientes?.reduce((sum, p) => {
+      // Verificar si el pago está completado (estado puede ser 'completado', 'pagado' o similar)
+      const estaPagado = p.estado?.toLowerCase() === 'completado' ||
+                        p.estado?.toLowerCase() === 'pagado' ||
+                        p.fecha_pago != null;
+      return sum + (estaPagado ? (p.monto || 0) : 0);
+    }, 0) || 0;
+
+    // Solo incluir giros a proveedores que estén pagados
+    const totalGirosProveedor = pagosProveedores?.reduce((sum, p) => {
+      // Usar valor_pagado si existe (indica que se pagó), verificar estado también
+      const estaPagado = p.estado?.toLowerCase() === 'completado' ||
+                        p.estado?.toLowerCase() === 'pagado' ||
+                        p.valor_pagado > 0 ||
+                        p.fecha_pago_realizado != null;
+      return sum + (estaPagado ? (p.valor_pagado || p.valorSolicitado || 0) : 0);
+    }, 0) || 0;
+
+    // Solo incluir costos logísticos pagados (asumimos que todos los que están en la BD ya se pagaron)
     const totalCostosLogisticos = costosLogisticos?.reduce((sum, c) => sum + (c.monto || 0), 0) || 0;
+
+    // Solo incluir extracostos válidos (ya filtrados previamente)
     const totalExtracostosValidos = extracostosValidos.reduce((sum, e) => sum + (e.monto || 0), 0);
-    const totalLiberaciones = liberaciones?.reduce((sum, l) => sum + (l.capital || 0), 0) || 0;
-    
-    return totalPagosClientes + totalGirosProveedor + totalCostosLogisticos + totalExtracostosValidos + totalLiberaciones;
-  }, [pagosClientes, pagosProveedores, costosLogisticos, extracostosValidos, liberaciones]);
+
+    // NO incluir liberaciones en el total pagado, ya que son entregas de mercancía al cliente
+    // const totalLiberaciones = liberaciones?.reduce((sum, l) => sum + (l.capital || 0), 0) || 0;
+
+    const total = totalPagosClientes + totalGirosProveedor + totalCostosLogisticos + totalExtracostosValidos;
+
+    console.log('💰 [TOTAL PAGADO] Cálculo detallado:', {
+      totalPagosClientes,
+      totalGirosProveedor,
+      totalCostosLogisticos,
+      totalExtracostosValidos,
+      totalPagado: total,
+      detalles: {
+        pagosClientesCompletados: pagosClientes?.filter(p =>
+          p.estado?.toLowerCase() === 'completado' ||
+          p.estado?.toLowerCase() === 'pagado' ||
+          p.fecha_pago != null
+        ),
+        girosProveedorPagados: pagosProveedores?.filter(p =>
+          p.estado?.toLowerCase() === 'completado' ||
+          p.estado?.toLowerCase() === 'pagado' ||
+          p.valor_pagado > 0 ||
+          p.fecha_pago_realizado != null
+        )
+      }
+    });
+
+    return total;
+  }, [pagosClientes, pagosProveedores, costosLogisticos, extracostosValidos]);
+
+  // Total por Financiar es el 80% del valor total de la operación
+  const totalPorFinanciar = useMemo(() => {
+    const valorTotalOperacion = resumenFinanciero.valorOperacion || 0;
+    const montoAFinanciar = valorTotalOperacion * 0.8; // 80% del valor total
+
+    console.log('📊 [TOTAL POR FINANCIAR] Cálculo:', {
+      valorTotalOperacion,
+      porcentajeFinanciamiento: '80%',
+      montoAFinanciar,
+      totalPagado: totalPagadoReal,
+      pendientePorPagar: Math.max(0, montoAFinanciar - totalPagadoReal)
+    });
+
+    return montoAFinanciar;
+  }, [resumenFinanciero.valorOperacion]);
 
   const totalPendienteReal = useMemo(() => {
-    const valorTotalOperacion = resumenFinanciero.valorOperacion || 0;
-    return Math.max(0, valorTotalOperacion - totalPagadoReal);
-  }, [resumenFinanciero.valorOperacion, totalPagadoReal]);
+    // Lo pendiente es el total a financiar menos lo ya pagado
+    return Math.max(0, totalPorFinanciar - totalPagadoReal);
+  }, [totalPorFinanciar, totalPagadoReal]);
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -643,41 +715,77 @@ export default function FKFinancialTimeline({
           <div className="text-right">
             <p className="text-sm text-primary-700">Valor Total Operación</p>
             <p className="text-xl font-bold text-primary-900">
-              ${(resumenFinanciero.valorOperacion || 0).toLocaleString()} USD
+              ${(resumenFinanciero.valorOperacion || 0).toLocaleString()} {moneda}
             </p>
           </div>
         </div>
 
         {/* Resumen de estado */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-white rounded-lg p-4 border">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="h-5 w-5 text-success-600" />
               <span className="text-sm font-medium text-gray-700">Total Pagado</span>
             </div>
             <p className="text-lg font-bold text-success-600">
-              ${totalPagadoReal.toLocaleString()}
-            </p>
-          </div>
-          
-          <div className="bg-white rounded-lg p-4 border">
-            <div className="flex items-center gap-2 mb-2">
-              <Clock className="h-5 w-5 text-yellow-600" />
-              <span className="text-sm font-medium text-gray-700">Total por Financiar</span>
-            </div>
-            <p className="text-lg font-bold text-yellow-600">
-              ${totalPendienteReal.toLocaleString()}
+              ${totalPagadoReal.toLocaleString()} {moneda}
             </p>
           </div>
 
+          <div className="bg-white rounded-lg p-4 border">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="h-5 w-5 text-yellow-600" />
+              <span className="text-sm font-medium text-gray-700">Total Financiado</span>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-yellow-600">
+                ${totalPorFinanciar.toLocaleString()} {moneda}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                80% del valor total
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 border">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-medium text-gray-700">ID Integra</span>
+            </div>
+            <div className="text-sm font-mono text-blue-600 break-all whitespace-pre-line">
+              {idIntegra && typeof idIntegra === 'string' ?
+                idIntegra.split(',').map(id => id.trim()).join('\n') :
+                idIntegra || 'No asignado'
+              }
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 border">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-5 w-5 text-purple-600" />
+              <span className="text-sm font-medium text-gray-700">ID PAGA</span>
+            </div>
+            <div className="text-sm font-mono text-purple-600 break-all whitespace-pre-line">
+              {(() => {
+                if (Array.isArray(idsPaga)) {
+                  return idsPaga.join('\n');
+                } else if (idsPaga && typeof idsPaga === 'string') {
+                  return idsPaga.split(',').map(id => id.trim()).join('\n');
+                } else {
+                  return idsPaga || 'No asignado';
+                }
+              })()}
+            </div>
+          </div>
+
           {isAdmin && totalReembolsos > 0 && (
-            <div className="bg-white rounded-lg p-4 border">
+            <div className="bg-white rounded-lg p-4 border md:col-span-2 lg:col-span-4">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="h-5 w-5 text-red-600" />
                 <span className="text-sm font-medium text-gray-700">Reembolsos</span>
               </div>
               <p className="text-lg font-bold text-red-600">
-                ${(totalReembolsos || 0).toLocaleString()}
+                ${(totalReembolsos || 0).toLocaleString()} {moneda}
               </p>
             </div>
           )}
@@ -716,48 +824,48 @@ export default function FKFinancialTimeline({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 text-center">
               {/* Card 1: Total Operación */}
               <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <p className="text-xl md:text-2xl font-bold text-primary-700 mb-1 break-words">
-                  ${resumenFinanciero.valorOperacion?.toLocaleString() || '0'}
+                <p className="text-lg md:text-xl font-bold text-primary-700 mb-1 whitespace-nowrap">
+                  ${resumenFinanciero.valorOperacion?.toLocaleString() || '0'} {moneda}
                 </p>
                 <p className="text-xs md:text-sm text-primary-600 font-medium leading-tight">Total Operación</p>
               </div>
               
               {/* Card 2: Giros a Proveedor */}
               <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <p className="text-xl md:text-2xl font-bold text-indigo-600 mb-1 break-words">
-                  ${(pagosProveedores?.reduce((sum, p) => sum + (p.valor_pagado || p.valorSolicitado || 0), 0) || 0).toLocaleString()}
+                <p className="text-lg md:text-xl font-bold text-indigo-600 mb-1 whitespace-nowrap">
+                  ${(pagosProveedores?.reduce((sum, p) => sum + (p.valor_pagado || p.valorSolicitado || 0), 0) || 0).toLocaleString()} {moneda}
                 </p>
                 <p className="text-xs md:text-sm text-indigo-600 font-medium leading-tight">Giros a Proveedor</p>
               </div>
               
               {/* Card 3: Costos Logísticos */}
               <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <p className="text-xl md:text-2xl font-bold text-purple-600 mb-1 break-words">
-                  ${(costosLogisticos?.reduce((sum, c) => sum + (c.monto || 0), 0) || 0).toLocaleString()}
+                <p className="text-lg md:text-xl font-bold text-purple-600 mb-1 whitespace-nowrap">
+                  ${(costosLogisticos?.reduce((sum, c) => sum + (c.monto || 0), 0) || 0).toLocaleString()} {moneda}
                 </p>
                 <p className="text-xs md:text-sm text-purple-600 font-medium leading-tight">Costos Logísticos</p>
               </div>
               
               {/* Card 4: Liberaciones */}
               <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <p className="text-xl md:text-2xl font-bold text-emerald-600 mb-1 break-words">
-                  ${(liberaciones?.reduce((sum, l) => sum + (l.capital || 0), 0) || 0).toLocaleString()}
+                <p className="text-lg md:text-xl font-bold text-emerald-600 mb-1 whitespace-nowrap">
+                  ${(liberaciones?.reduce((sum, l) => sum + (l.capital || 0), 0) || 0).toLocaleString()} {moneda}
                 </p>
                 <p className="text-xs md:text-sm text-emerald-600 font-medium leading-tight">Liberaciones</p>
               </div>
               
               {/* Card 5: Total Extracostos */}
               <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <p className="text-xl md:text-2xl font-bold text-orange-600 mb-1 break-words">
-                  ${(extracostosValidos.reduce((sum, e) => sum + (e.monto || 0), 0)).toLocaleString()}
+                <p className="text-lg md:text-xl font-bold text-orange-600 mb-1 whitespace-nowrap">
+                  ${(extracostosValidos.reduce((sum, e) => sum + (e.monto || 0), 0)).toLocaleString()} {moneda}
                 </p>
                 <p className="text-xs md:text-sm text-orange-600 font-medium leading-tight">Total Extracostos</p>
               </div>
               
               {/* Card 6: Reembolsos */}
               <div className="bg-white/80 rounded-lg p-4 shadow-sm">
-                <p className="text-xl md:text-2xl font-bold text-red-600 mb-1 break-words">
-                  ${(reembolsosOperacion?.reduce((sum, r) => sum + (r.monto_reembolso || 0), 0) || 0).toLocaleString()}
+                <p className="text-lg md:text-xl font-bold text-red-600 mb-1 whitespace-nowrap">
+                  ${(reembolsosOperacion?.reduce((sum, r) => sum + (r.monto_reembolso || 0), 0) || 0).toLocaleString()} {moneda}
                 </p>
                 <p className="text-xs md:text-sm text-red-600 font-medium leading-tight">Reembolsos</p>
               </div>
@@ -795,17 +903,11 @@ export default function FKFinancialTimeline({
                   <span className="font-semibold text-red-700">{reembolsosOperacion?.length || 0} conceptos</span>
                 </div>
               </div>
-              <div className="bg-white/60 rounded p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-700">Total Eventos:</span>
-                  <span className="font-semibold text-gray-700">{timelineEvents.length} eventos</span>
-                </div>
-              </div>
             </div>
           </div>
 
           {/* Detailed Financial Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             
             {/* Cuota Operacional y Avances */}
             <div className="bg-blue-50 rounded-lg p-6">
@@ -823,9 +925,9 @@ export default function FKFinancialTimeline({
                         const getNombrePago = (tipoPago: string, descripcion?: string) => {
                           if (descripcion) return descripcion;
                           switch (tipoPago.toLowerCase()) {
-                            case 'cuota_operacional': return 'Cuota Operacional (10%)';
-                            case 'primer_anticipo': return 'Primer Anticipo';
-                            case 'segundo_anticipo': return 'Segundo Anticipo';
+                            case 'cuota_operacional': return 'Cuota Operacional';
+                            case 'primer_anticipo': return 'Primer Anticipo (10%)';
+                            case 'segundo_anticipo': return 'Segundo Anticipo (10%)';
                             default: return tipoPago.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
                           }
                         };
@@ -850,7 +952,7 @@ export default function FKFinancialTimeline({
                                 {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString('es-ES') : ''}
                               </span>
                               <span className="font-medium text-blue-800 text-xs">
-                                ${(pago.monto || 0).toLocaleString()}
+                                ${(pago.monto || 0).toLocaleString()} {pago.moneda || moneda}
                               </span>
                             </div>
                           </div>
@@ -861,7 +963,7 @@ export default function FKFinancialTimeline({
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium text-blue-700">Total Cuotas y Avances:</span>
                         <span className="font-bold text-blue-800">
-                          ${(pagosClientes.reduce((sum, p) => sum + (p.monto || 0), 0)).toLocaleString()}
+                          ${(pagosClientes.reduce((sum, p) => sum + (p.monto || 0), 0)).toLocaleString()} {moneda}
                         </span>
                       </div>
                     </div>
@@ -891,20 +993,25 @@ export default function FKFinancialTimeline({
                           </span>
                           <span className={cn(
                             "text-xs px-2 py-1 rounded-full",
-                            (giro.estado === 'completado' || giro.fecha_pago_realizado) ? 'bg-success-100 text-success-700' : 
+                            (giro.estado === 'completado' || giro.fecha_pago_realizado) ? 'bg-success-100 text-success-700' :
                             giro.estado === 'en_proceso' ? 'bg-yellow-100 text-yellow-700' :
                             'bg-gray-100 text-gray-600'
                           )}>
-                            {(giro.estado === 'completado' || giro.fecha_pago_realizado) ? 'Pagado' : 
+                            {(giro.estado === 'completado' || giro.fecha_pago_realizado) ? 'Pagado' :
                              giro.estado === 'en_proceso' ? 'En Proceso' : 'Pendiente'}
                           </span>
                         </div>
+                        {giro.nombre_proveedor && (
+                          <div className="text-xs text-indigo-600 italic mb-1">
+                            → {giro.nombre_proveedor}
+                          </div>
+                        )}
                         <div className="flex justify-between items-center">
                           <span className="text-xs text-indigo-600">
                             {giro.porcentaje_pago || giro.porcentajeGiro || 'N/A'}
                           </span>
                           <span className="font-medium text-indigo-800 text-xs">
-                            ${(giro.valor_pagado || giro.valorSolicitado || 0).toLocaleString()}
+                            ${(giro.valor_pagado || giro.valorSolicitado || 0).toLocaleString()} {moneda}
                           </span>
                         </div>
                       </div>
@@ -913,7 +1020,7 @@ export default function FKFinancialTimeline({
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium text-indigo-700">Total Giros:</span>
                         <span className="font-bold text-indigo-800">
-                          ${(pagosProveedores?.reduce((sum, p) => sum + (p.valor_pagado || p.valorSolicitado || 0), 0) || 0).toLocaleString()}
+                          ${(pagosProveedores?.reduce((sum, p) => sum + (p.valor_pagado || p.valorSolicitado || 0), 0) || 0).toLocaleString()} {moneda}
                         </span>
                       </div>
                     </div>
@@ -941,8 +1048,23 @@ export default function FKFinancialTimeline({
                           <span className="text-xs text-purple-700 font-medium truncate">
                             {costo.descripcion || costo.tipo_costo}
                           </span>
-                          <span className="font-bold text-purple-800 text-xs">
-                            ${(costo.monto || 0).toLocaleString()}
+                          <span className={cn(
+                            "text-xs px-2 py-1 rounded-full",
+                            (costo.estado === 'pagado' || costo.estado === 'completado' || costo.fecha_pago) ?
+                              'bg-success-100 text-success-700' :
+                              costo.estado === 'en_proceso' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-gray-100 text-gray-600'
+                          )}>
+                            {(costo.estado === 'pagado' || costo.estado === 'completado' || costo.fecha_pago) ? 'Pagado' :
+                             costo.estado === 'en_proceso' ? 'En Proceso' : 'Pendiente'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-purple-600">
+                            {costo.fecha_pago ? new Date(costo.fecha_pago).toLocaleDateString('es-ES') : ''}
+                          </span>
+                          <span className="font-medium text-purple-800 text-xs">
+                            ${(costo.monto || 0).toLocaleString()} {moneda}
                           </span>
                         </div>
                         {costo.descripcion && costo.tipo_costo && (
@@ -957,7 +1079,7 @@ export default function FKFinancialTimeline({
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium text-purple-700">Total Logísticos:</span>
                         <span className="font-bold text-purple-800">
-                          ${(costosLogisticos.reduce((sum, c) => sum + (c.monto || 0), 0)).toLocaleString()}
+                          ${(costosLogisticos.reduce((sum, c) => sum + (c.monto || 0), 0)).toLocaleString()} {moneda}
                         </span>
                       </div>
                     </div>
@@ -983,7 +1105,7 @@ export default function FKFinancialTimeline({
                       <div key={index} className="bg-white/80 rounded p-2">
                         <div className="flex justify-between items-center mb-1">
                           <span className="text-xs text-emerald-700 font-medium">
-                            Liberación #{liberacion.numero}
+                            Entrega #{liberacion.numero}
                           </span>
                           <span className={cn(
                             "text-xs px-2 py-1 rounded-full",
@@ -1000,7 +1122,7 @@ export default function FKFinancialTimeline({
                             {liberacion.fecha ? new Date(liberacion.fecha).toLocaleDateString('es-ES') : 'Sin fecha'}
                           </span>
                           <span className="font-medium text-emerald-800 text-xs">
-                            ${(liberacion.capital || 0).toLocaleString()}
+                            ${(liberacion.capital || 0).toLocaleString()} {moneda}
                           </span>
                         </div>
                       </div>
@@ -1009,7 +1131,7 @@ export default function FKFinancialTimeline({
                       <div className="flex justify-between items-center">
                         <span className="text-xs font-medium text-emerald-700">Total Liberado:</span>
                         <span className="font-bold text-emerald-800">
-                          ${(liberaciones?.reduce((sum, l) => sum + (l.capital || 0), 0) || 0).toLocaleString()}
+                          ${(liberaciones?.reduce((sum, l) => sum + (l.capital || 0), 0) || 0).toLocaleString()} {moneda}
                         </span>
                       </div>
                     </div>
@@ -1050,7 +1172,7 @@ export default function FKFinancialTimeline({
                             {extracosto.fecha_pago ? new Date(extracosto.fecha_pago).toLocaleDateString('es-ES') : 'Sin fecha'}
                           </span>
                           <span className="font-medium text-orange-800 text-xs">
-                            ${(extracosto.monto || 0).toLocaleString()}
+                            ${(extracosto.monto || 0).toLocaleString()} {moneda}
                           </span>
                         </div>
                       </div>
@@ -1062,7 +1184,7 @@ export default function FKFinancialTimeline({
                           Total Extracostos:
                         </span>
                         <span className="font-bold text-orange-800">
-                          ${(extracostosValidos.reduce((sum, e) => sum + (e.monto || 0), 0)).toLocaleString()}
+                          ${(extracostosValidos.reduce((sum, e) => sum + (e.monto || 0), 0)).toLocaleString()} {moneda}
                         </span>
                       </div>
                     </div>

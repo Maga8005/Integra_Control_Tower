@@ -53,6 +53,17 @@ export interface BackendOperationCard {
   liberaciones?: LiberacionEjecutada[]; // NUEVO: Liberaciones ejecutadas
   // Real document data
   documentCompletion?: number; // NUEVO: Porcentaje real de documentos completados
+  // 🆕 Array completo de proveedores
+  proveedores?: Array<{
+    id: string;
+    nombre: string;
+    pais?: string;
+    tiene_pagos?: boolean;
+    valor_total_compra?: number;
+    moneda?: string;
+    terminos_pago?: string;
+    otros_terminos_pago?: string;
+  }>;
   documentsData?: any[]; // NUEVO: Datos reales de documentos de la BD
   createdAt?: string;
   updatedAt?: string;
@@ -164,14 +175,33 @@ function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
       id: op.id,
       clientName: op.clienteCompleto,
       clientNit: op.clienteNit || op.clienteNIT || 'Sin NIT',
-      providerName: op.proveedorBeneficiario || 'Proveedor no especificado',
+      providerName: (() => {
+        console.log(`🏢 [MAPEO-PROVEEDORES] Operación ${op.id}:`, {
+          hasProveedores: !!(op.proveedores && op.proveedores.length > 0),
+          proveedoresLength: op.proveedores?.length || 0,
+          proveedores: op.proveedores?.map(p => p.nombre) || [],
+          fallbackBeneficiario: op.proveedorBeneficiario
+        });
+
+        if (op.proveedores && op.proveedores.length > 0) {
+          const result = op.proveedores.length === 1
+            ? op.proveedores[0].nombre
+            : `${op.proveedores[0].nombre} (+${op.proveedores.length - 1})`;
+          console.log(`🏢 [RESULTADO] Proveedor mostrado: "${result}"`);
+          return result;
+        } else {
+          const fallback = op.proveedorBeneficiario || 'Proveedor no especificado';
+          console.log(`🏢 [FALLBACK] Usando fallback: "${fallback}"`);
+          return fallback;
+        }
+      })(),
       totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
       totalValueNumeric: op.valorTotal || 0,
       operationValue: op.valorOperacion ? `$${op.valorOperacion.toLocaleString()} ${op.moneda || 'USD'}` : '-',
       operationValueNumeric: op.valorOperacion || 0,
       route: op.rutaComercial || 'Ruta no especificada',
       assignedPerson: op.personaAsignada || 'No asignado',
-      progress: op.progresoGeneral || 0,
+      progress: op.preciseProgress?.totalProgress || op.progresoGeneral || 0,
       status: mapBackendStatus(op.estados),
       currentPhaseName: getCurrentPhaseName(op.timeline),
       timeline: mapTimelineData(op.timeline), // NUEVO: Mapear timeline
@@ -373,14 +403,18 @@ export function useDashboardData(): UseDashboardDataReturn {
           id: op.id,
           clientName: op.clienteCompleto,
           clientNit: op.clienteNit,
-          providerName: op.proveedorBeneficiario,
+          providerName: op.proveedores && op.proveedores.length > 0
+            ? (op.proveedores.length === 1
+              ? op.proveedores[0].nombre
+              : `${op.proveedores[0].nombre} (+${op.proveedores.length - 1})`)
+            : op.proveedorBeneficiario || 'Proveedor no especificado',
           totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`,
           totalValueNumeric: op.valorTotal || 0,
           operationValue: op.valorOperacion ? `$${op.valorOperacion.toLocaleString()} ${op.moneda || 'USD'}` : '-',
           operationValueNumeric: op.valorOperacion || 0,
           route: op.rutaComercial || 'Ruta no especificada',
           assignedPerson: op.personaAsignada || 'No asignado',
-          progress: op.progresoGeneral || 0,
+          progress: op.preciseProgress?.totalProgress || op.progresoGeneral || 0,
           status: op.progresoGeneral >= 100 ? 'completed' : 
                  op.progresoGeneral > 0 ? 'in-progress' : 'draft',
           currentPhaseName: op.timeline?.[0]?.fase || 'Sin fase',
@@ -459,14 +493,18 @@ export function useDashboardData(): UseDashboardDataReturn {
           id: op.id,
           clientName: op.clienteCompleto,
           clientNit: op.clienteNit,
-          providerName: op.proveedorBeneficiario, // MAPEO CORRECTO
+          providerName: op.proveedores && op.proveedores.length > 0
+            ? (op.proveedores.length === 1
+              ? op.proveedores[0].nombre
+              : `${op.proveedores[0].nombre} (+${op.proveedores.length - 1})`)
+            : op.proveedorBeneficiario || 'Proveedor no especificado', // MAPEO CORRECTO
           totalValue: `$${op.valorTotal?.toLocaleString() || '0'} ${op.moneda || 'USD'}`, // FORMATO CORRECTO
           totalValueNumeric: op.valorTotal || 0,
           operationValue: op.valorOperacion ? `$${op.valorOperacion.toLocaleString()} ${op.moneda || 'USD'}` : undefined,
           operationValueNumeric: op.valorOperacion || 0,
           route: op.rutaComercial || 'Ruta no especificada',
           assignedPerson: op.personaAsignada || 'No asignado', // MAPEO CORRECTO
-          progress: op.progresoGeneral || 0,
+          progress: op.preciseProgress?.totalProgress || op.progresoGeneral || 0,
           status: op.status || (op.progresoGeneral >= 100 ? 'completed' : 
                                op.progresoGeneral > 0 ? 'in-progress' : 'draft'),
           currentPhaseName: (() => {

@@ -37,7 +37,20 @@ export interface ParsedGeneralInfo {
   cliente: string;
   valor: number;
   ruta: string;
-  moneda: string;
+  moneda: string; // Moneda principal de compra
+  monedas: {
+    compra: string;          // Moneda de compra de mercancía
+    flete?: string;          // Moneda del flete internacional
+    gastosDestino?: string;  // Moneda de gastos en destino
+    seguro?: string;         // Moneda del seguro
+    liberacion?: string;     // Moneda del capital de liberación
+  };
+  costosLogisticos: {
+    flete?: number;
+    gastosDestino?: number;
+    seguro?: number;
+  };
+  capitalLiberacion?: number;
 }
 
 export interface ProgressInfo {
@@ -78,7 +91,12 @@ export function parseInfoGeneralColumn(infoGeneralValue: string): ParsedGeneralI
         cliente: '',
         valor: 0,
         ruta: '',
-        moneda: 'USD'
+        moneda: 'USD',
+        monedas: {
+          compra: 'USD'
+        },
+        costosLogisticos: {},
+        capitalLiberacion: undefined
       };
     }
 
@@ -157,30 +175,76 @@ export function parseInfoGeneralColumn(infoGeneralValue: string): ParsedGeneralI
       ? `${paisExportador} → ${paisImportador}`
       : paisExportador || paisImportador || '';
 
-    // Extraer moneda
+    // Extraer moneda de compra principal
     const monedaPatterns = [
       /MONEDA DE PAGO SOLICITADO:\s*([A-Z]{3})/i,
       /MONEDA:\s*([A-Z]{3})/i,
       /CURRENCY:\s*([A-Z]{3})/i
     ];
     
-    let moneda = 'USD';
+    let monedaCompra = 'USD';
     for (const pattern of monedaPatterns) {
       const match = cleanText.match(pattern);
       if (match && match[1]) {
-        moneda = match[1].toUpperCase();
+        monedaCompra = match[1].toUpperCase();
         break;
       }
+    }
+
+    // Extraer valor solicitado con su moneda
+    const valorSolicitadoMatch = cleanText.match(/VALOR SOLICITADO:\s*([\d,]+(?:\.\d+)?)\s*([A-Z]{3})?/i);
+    if (valorSolicitadoMatch && valorSolicitadoMatch[1]) {
+      valor = parseFloat(valorSolicitadoMatch[1].replace(/,/g, ''));
+      if (valorSolicitadoMatch[2]) {
+        monedaCompra = valorSolicitadoMatch[2].toUpperCase();
+      }
+    }
+
+    // Extraer costos logísticos con sus monedas
+    const fleteMatch = cleanText.match(/FLETE INTERNACIONAL:\s*([\d,]+(?:\.\d+)?)\s*([A-Z]{3})/i);
+    const gastosMatch = cleanText.match(/GASTOS EN DESTINO:\s*([\d,]+(?:\.\d+)?)\s*([A-Z]{3})/i);
+    const seguroMatch = cleanText.match(/SEGURO:\s*([\d,]+(?:\.\d+)?)\s*([A-Z]{3})/i);
+
+    const costosLogisticos = {
+      flete: fleteMatch ? parseFloat(fleteMatch[1].replace(/,/g, '')) : undefined,
+      gastosDestino: gastosMatch ? parseFloat(gastosMatch[1].replace(/,/g, '')) : undefined,
+      seguro: seguroMatch ? parseFloat(seguroMatch[1].replace(/,/g, '')) : undefined
+    };
+
+    const monedas = {
+      compra: monedaCompra,
+      flete: fleteMatch?.[2]?.toUpperCase(),
+      gastosDestino: gastosMatch?.[2]?.toUpperCase(),
+      seguro: seguroMatch?.[2]?.toUpperCase(),
+      liberacion: undefined as string | undefined
+    };
+
+    // Extraer capital de liberación con su moneda
+    const capitalMatch = cleanText.match(/Capital:\s*([\d,]+(?:\.\d+)?)\s*([A-Z]{3})/i);
+    let capitalLiberacion: number | undefined;
+    if (capitalMatch) {
+      capitalLiberacion = parseFloat(capitalMatch[1].replace(/,/g, ''));
+      monedas.liberacion = capitalMatch[2]?.toUpperCase();
     }
 
     const result = {
       cliente: cliente || 'Cliente no especificado',
       valor: valor || 0,
       ruta: ruta || 'Ruta no especificada',
-      moneda: moneda
+      moneda: monedaCompra, // Mantener compatibilidad
+      monedas,
+      costosLogisticos,
+      capitalLiberacion
     };
 
-    console.log('✅ Info general parseada:', result);
+    console.log('✅ Info general parseada:', {
+      cliente: result.cliente,
+      valor: result.valor,
+      ruta: result.ruta,
+      monedas: result.monedas,
+      costosLogisticos: result.costosLogisticos,
+      capitalLiberacion: result.capitalLiberacion
+    });
     return result;
 
   } catch (error) {
@@ -189,7 +253,12 @@ export function parseInfoGeneralColumn(infoGeneralValue: string): ParsedGeneralI
       cliente: 'Error en parsing',
       valor: 0,
       ruta: 'Error en parsing',
-      moneda: 'USD'
+      moneda: 'USD',
+      monedas: {
+        compra: 'USD'
+      },
+      costosLogisticos: {},
+      capitalLiberacion: undefined
     };
   }
 }
