@@ -158,7 +158,12 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
         operationId: op.operacionId || 'Sin ID',  // ID único de la operación
         clientName: op.clienteCompleto || op.clientName || 'Sin nombre',  // Nombre real del cliente del parser
         clientNit: op.clienteNit || 'Sin NIT',
-        providerName: op.proveedorBeneficiario || op.providerName || 'Sin proveedor',
+        providerName: op.proveedorBeneficiario || op.providerName || 'Sin proveedor', // Fallback simple
+        // 🆕 Array completo de proveedores para mostrar en componente
+        proveedores: (() => {
+          console.log(`🏢 [ADMIN-MAPEO-FINAL] Operación ${op.id} - Array proveedores:`, op.proveedores);
+          return op.proveedores || [];
+        })(),
         totalValue: formatCurrency(op.valorTotal || 0, op.moneda || 'USD'),
         totalValueNumeric: op.valorTotal || 0,
         operationValue: op.valorOperacion ? formatCurrency(op.valorOperacion, op.moneda || 'USD') : '-',

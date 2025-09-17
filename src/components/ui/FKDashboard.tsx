@@ -712,14 +712,9 @@ function DashboardOperationCard({ operation, onViewDetails }: DashboardOperation
       {/* Card Header - Layout en 3 líneas */}
       <div className="p-3 sm:p-4 border-b border-gray-100 space-y-2">
         
-        {/* Línea 1: Nombre del Proveedor */}
+        {/* Línea 1: Proveedores */}
         <div className="w-full">
-          <h4 
-            className="text-base sm:text-lg font-semibold text-primary-700 truncate"
-            title={operation.providerName || 'Proveedor'}
-          >
-            {operation.providerName || 'Proveedor'}
-          </h4>
+          <ProvidersDisplay operation={operation} />
         </div>
         
         {/* Línea 2: Subtítulo */}
@@ -880,4 +875,78 @@ function FinancialStatusIndicator({ operation }: FinancialStatusIndicatorProps) 
       </span>
     </div>
   );
+}
+
+// Componente para mostrar múltiples proveedores
+interface ProvidersDisplayProps {
+  operation: BackendOperationCard;
+}
+
+function ProvidersDisplay({ operation }: ProvidersDisplayProps) {
+  // Usar el array de proveedores si está disponible
+  const proveedores = operation.proveedores || [];
+
+  console.log(`🏢 [PROVIDERS-DISPLAY] Operación ${operation.id}:`, {
+    hasProveedores: proveedores.length > 0,
+    proveedoresLength: proveedores.length,
+    proveedores: proveedores.map(p => p.nombre),
+    fallbackProviderName: operation.providerName
+  });
+
+  if (proveedores.length > 1) {
+    return (
+      <div className="space-y-1">
+        {proveedores.map((proveedor, index: number) => (
+          <h4
+            key={proveedor.id || index}
+            className={cn(
+              "font-semibold text-primary-700 truncate",
+              index === 0 ? "text-base sm:text-lg" : "text-sm sm:text-base"
+            )}
+            title={proveedor.nombre}
+          >
+            {index === 0 && (
+              <span className="text-xs text-gray-500 mr-2">Principal:</span>
+            )}
+            {index === 1 && (
+              <span className="text-xs text-gray-500 mr-2">Adicional:</span>
+            )}
+            {index > 1 && (
+              <span className="text-xs text-gray-500 mr-2">#{index + 1}:</span>
+            )}
+            {proveedor.nombre}
+            {proveedor.tiene_pagos && (
+              <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                Con pagos
+              </span>
+            )}
+          </h4>
+        ))}
+      </div>
+    );
+  } else if (proveedores.length === 1) {
+    return (
+      <h4
+        className="text-base sm:text-lg font-semibold text-primary-700 truncate"
+        title={proveedores[0].nombre}
+      >
+        {proveedores[0].nombre}
+        {proveedores[0].tiene_pagos && (
+          <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+            Con pagos
+          </span>
+        )}
+      </h4>
+    );
+  } else {
+    // Fallback al proveedor beneficiario
+    return (
+      <h4
+        className="text-base sm:text-lg font-semibold text-primary-700 truncate"
+        title={operation.providerName || 'Proveedor'}
+      >
+        {operation.providerName || 'Proveedor'}
+      </h4>
+    );
+  }
 }

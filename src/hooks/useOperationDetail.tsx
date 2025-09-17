@@ -84,6 +84,23 @@ export interface BackendOperationDetail {
     direccion?: string;
     pais?: string;
   };
+
+  // Nueva estructura para múltiples bancos
+  bancos?: Array<{
+    id?: string;
+    operacion_id: string;
+    beneficiario: string;
+    banco: string;
+    direccion: string;
+    codigo_postal: string;
+    provincia: string;
+    numero_cuenta: string;
+    swift: string;
+    banco_intermediario?: string;
+    swift_intermediario?: string;
+    pais_banco: string;
+    created_at?: string;
+  }>;
   observaciones: string;
   alertas: any[];
   preciseProgress: {
@@ -154,8 +171,24 @@ export interface BackendOperationDetail {
     estado: string;
     fecha_solicitud?: string;
     fecha_pago_realizado?: string;
-    valor_total_compra?: number;
+    valor_total_compra?: number;  // 🆕 Valor total de compra del proveedor
+    moneda: string;
+    nombre_proveedor?: string;
+    // pais_exportador?: string; // ❌ Campo no existe en tabla
+    terminos_pago?: string;  // 🆕 Términos de negociación del proveedor
+    otros_terminos_pago?: string;  // 🆕 Otros términos específicos
     created_at: string;
+  }>;
+  // 🆕 TODOS los proveedores de la operación (no solo los que tienen pagos)
+  proveedores?: Array<{
+    id: string;
+    nombre: string;
+    pais?: string;
+    valor_total_compra?: number;
+    moneda?: string;
+    terminos_pago?: string;
+    otros_terminos_pago?: string;
+    tiene_pagos?: boolean;
   }>;
   id_integra?: string | null;
   ids_paga?: string | null;
@@ -236,13 +269,38 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
       console.log('📄 Operación encontrada:', {
         operationId: foundOperation.id,
         clientName: foundOperation.clienteCompleto,
+        valorTotalOperacion: foundOperation.valorTotal,
+        valorCompraMercancia: foundOperation.valorOperacion,
         bancosProveedores: foundOperation.bancosProveedores,
         hasBankingData: !!foundOperation.bancosProveedores,
         pagosClientes: foundOperation.pagosClientes?.length || 0,
         pagosProveedores: foundOperation.pagosProveedores?.length || 0,
+        proveedores: foundOperation.proveedores?.length || 0, // 🆕 Verificar proveedores
         extracostos: foundOperation.extracostos?.length || 0,
         reembolsos: foundOperation.reembolsos?.length || 0
       });
+
+      // Debug de proveedores
+      if (foundOperation.proveedores && foundOperation.proveedores.length > 0) {
+        console.log('🏢 DEBUG - Proveedores del backend:', foundOperation.proveedores);
+      } else {
+        console.log('⚠️ DEBUG - No llegaron proveedores del backend');
+      }
+
+      // Debug detallado de pagos proveedores
+      if (foundOperation.pagosProveedores && foundOperation.pagosProveedores.length > 0) {
+        console.log('💰 DEBUG - Pagos Proveedores RAW del backend:', foundOperation.pagosProveedores);
+        foundOperation.pagosProveedores.forEach((pago, index) => {
+          console.log(`  Pago ${index + 1}:`, {
+            numero: pago.numero_pago,
+            valor: pago.valor_pagado,
+            valor_total_compra: pago.valor_total_compra,
+            moneda: pago.moneda,
+            nombre_proveedor: pago.nombre_proveedor,
+            todas_las_keys: Object.keys(pago)
+          });
+        });
+      }
 
       // Map the operation data to match the expected interface
       const mappedOperation: BackendOperationDetail = {
@@ -309,6 +367,8 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
         },
         // Pass through banking data directly from backend
         bancosProveedores: foundOperation.bancosProveedores,
+        // Agregar array de múltiples bancos
+        bancos: foundOperation.bancos || [],
         observaciones: foundOperation.observaciones || '',
         alertas: [],
         preciseProgress: {
@@ -331,6 +391,7 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
         reembolsosOperacion: foundOperation.reembolsos || [],
         pagosClientes: foundOperation.pagosClientes || [],
         pagosProveedores: foundOperation.pagosProveedores || [],
+        proveedores: foundOperation.proveedores || [],  // 🆕 Todos los proveedores
         id_integra: foundOperation.idIntegra || null,
         ids_paga: foundOperation.idsPaga || null
       };

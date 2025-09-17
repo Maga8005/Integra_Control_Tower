@@ -276,8 +276,6 @@ export default function FKAdminDashboard() {
           return a.clientName.localeCompare(b.clientName);
         case 'value':
           return (b.totalValueNumeric || 0) - (a.totalValueNumeric || 0);
-        case 'progress':
-          return (b.progress || 0) - (a.progress || 0);
         case 'updated':
         default:
           return new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime();
@@ -656,7 +654,6 @@ export default function FKAdminDashboard() {
                 <option value="updated">Recién actualizadas</option>
                 <option value="name">Nombre cliente</option>
                 <option value="value">Valor (mayor a menor)</option>
-                <option value="progress">Progreso (mayor a menor)</option>
               </select>
             </div>
             
@@ -742,25 +739,22 @@ export default function FKAdminDashboard() {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '35%' }}>
                     Cliente / RFC-NIT
                   </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '15%' }}>
                     Proveedor
                   </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '20%' }}>
                     Valores
                   </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/6">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '15%' }}>
                     Fase Actual
                   </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
-                    Progreso
-                  </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '10%' }}>
                     Documentos
                   </th>
-                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider w-1/8">
+                  <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider" style={{ width: '5%' }}>
                     Acciones
                   </th>
                 </tr>
@@ -783,9 +777,7 @@ export default function FKAdminDashboard() {
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <p className="text-gray-900 text-sm truncate" title={operation.providerName}>
-                        {operation.providerName}
-                      </p>
+                      <AdminProvidersDisplay operation={operation} />
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
@@ -834,19 +826,6 @@ export default function FKAdminDashboard() {
                       })()}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${operation.progress}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-gray-700 min-w-[3rem]">
-                          {operation.progress}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
                       <DocumentStatusBadge operation={operation} />
                     </td>
                     <td className="px-6 py-4">
@@ -885,4 +864,73 @@ export default function FKAdminDashboard() {
       )}
     </div>
   );
+}
+
+// Componente para mostrar múltiples proveedores en tabla de admin
+interface AdminProvidersDisplayProps {
+  operation: any; // Usando any porque viene de useAdminDashboardData
+}
+
+function AdminProvidersDisplay({ operation }: AdminProvidersDisplayProps) {
+  console.log(`🏢 [ADMIN-PROVIDERS-DISPLAY] Operación ${operation.id}:`, {
+    hasProveedores: !!(operation.proveedores && operation.proveedores.length > 0),
+    proveedoresLength: operation.proveedores?.length || 0,
+    proveedores: operation.proveedores?.map((p: any) => p.nombre) || [],
+    fallbackProviderName: operation.providerName
+  });
+
+  const proveedores = operation.proveedores || [];
+
+  // Función para truncar nombres de proveedores
+  const truncateProviderName = (name: string, maxLength: number = 25) => {
+    if (name.length <= maxLength) return name;
+    return name.substring(0, maxLength) + '...';
+  };
+
+  if (proveedores.length > 1) {
+    return (
+      <div className="space-y-1">
+        {proveedores.map((proveedor: any, index: number) => (
+          <div key={proveedor.id || index} className="flex items-center">
+            <p
+              className={cn(
+                "text-gray-900 text-sm truncate",
+                index === 0 ? "font-medium" : "font-normal text-gray-600"
+              )}
+              title={proveedor.nombre}
+            >
+              {index === 0 && <span className="text-xs text-gray-500 mr-1">P:</span>}
+              {index > 0 && <span className="text-xs text-gray-500 mr-1">+:</span>}
+              {truncateProviderName(proveedor.nombre)}
+            </p>
+            {proveedor.tiene_pagos && (
+              <span className="ml-1 text-xs px-1 py-0.5 bg-green-100 text-green-600 rounded">
+                $
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  } else if (proveedores.length === 1) {
+    return (
+      <div className="flex items-center">
+        <p className="text-gray-900 text-sm truncate" title={proveedores[0].nombre}>
+          {truncateProviderName(proveedores[0].nombre)}
+        </p>
+        {proveedores[0].tiene_pagos && (
+          <span className="ml-2 text-xs px-1.5 py-0.5 bg-green-100 text-green-600 rounded">
+            $
+          </span>
+        )}
+      </div>
+    );
+  } else {
+    // Fallback al proveedor beneficiario
+    return (
+      <p className="text-gray-900 text-sm truncate" title={operation.providerName}>
+        {truncateProviderName(operation.providerName)}
+      </p>
+    );
+  }
 }
