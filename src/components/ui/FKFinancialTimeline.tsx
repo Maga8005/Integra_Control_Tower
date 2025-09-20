@@ -200,8 +200,6 @@ interface FKFinancialTimelineProps {
   }>;
   isAdmin?: boolean;
   className?: string;
-  idIntegra?: string | null;
-  idsPaga?: string | null;
 }
 
 export default function FKFinancialTimeline({
@@ -218,9 +216,7 @@ export default function FKFinancialTimeline({
   liberaciones = [],
   timeline = [],
   isAdmin = false,
-  className,
-  idIntegra = null,
-  idsPaga = null
+  className
 }: FKFinancialTimelineProps) {
   const [showReimbursements, setShowReimbursements] = useState(false);
 
@@ -721,7 +717,7 @@ export default function FKFinancialTimeline({
         </div>
 
         {/* Resumen de estado */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white rounded-lg p-4 border">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle className="h-5 w-5 text-success-600" />
@@ -747,39 +743,9 @@ export default function FKFinancialTimeline({
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-4 border">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-5 w-5 text-blue-600" />
-              <span className="text-sm font-medium text-gray-700">ID Integra</span>
-            </div>
-            <div className="text-sm font-mono text-blue-600 break-all whitespace-pre-line">
-              {idIntegra && typeof idIntegra === 'string' ?
-                idIntegra.split(',').map(id => id.trim()).join('\n') :
-                idIntegra || 'No asignado'
-              }
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg p-4 border">
-            <div className="flex items-center gap-2 mb-2">
-              <FileText className="h-5 w-5 text-purple-600" />
-              <span className="text-sm font-medium text-gray-700">ID PAGA</span>
-            </div>
-            <div className="text-sm font-mono text-purple-600 break-all whitespace-pre-line">
-              {(() => {
-                if (Array.isArray(idsPaga)) {
-                  return idsPaga.join('\n');
-                } else if (idsPaga && typeof idsPaga === 'string') {
-                  return idsPaga.split(',').map(id => id.trim()).join('\n');
-                } else {
-                  return idsPaga || 'No asignado';
-                }
-              })()}
-            </div>
-          </div>
 
           {isAdmin && totalReembolsos > 0 && (
-            <div className="bg-white rounded-lg p-4 border md:col-span-2 lg:col-span-4">
+            <div className="bg-white rounded-lg p-4 border md:col-span-2">
               <div className="flex items-center gap-2 mb-2">
                 <DollarSign className="h-5 w-5 text-red-600" />
                 <span className="text-sm font-medium text-gray-700">Reembolsos</span>

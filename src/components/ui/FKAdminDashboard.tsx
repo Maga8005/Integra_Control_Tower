@@ -33,6 +33,7 @@ import { cn } from '../../utils/cn';
 import { useState, useMemo } from 'react';
 import { environment, supabaseHeaders } from '../../config/environment';
 import FKNPSAnalytics from './FKNPSAnalytics';
+import { IntegraCODashboard } from '../../integra-co/components/IntegraCODashboard';
 
 // Timeline phases mapping - 5 fases en orden secuencial
 const TIMELINE_PHASES = [
@@ -221,7 +222,7 @@ export default function FKAdminDashboard() {
   });
   
   // Tab state for admin sections
-  const [activeTab, setActiveTab] = useState<'operations' | 'nps'>('operations');
+  const [activeTab, setActiveTab] = useState<'operations' | 'nps' | 'integra-co'>('operations');
   
   const { operations, isLoading, error, metadata, refetch } = useAdminDashboardData(selectedCountry);
   
@@ -468,6 +469,18 @@ export default function FKAdminDashboard() {
             >
               <Shield className="h-4 w-4" />
               Panel de Operaciones
+            </button>
+            <button
+              onClick={() => setActiveTab('integra-co')}
+              className={cn(
+                "py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap flex items-center gap-2",
+                activeTab === 'integra-co'
+                  ? "border-primary-500 text-primary-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              )}
+            >
+              <DollarSign className="h-4 w-4" />
+              Pagos INTEGRA CO
             </button>
             <button
               onClick={() => setActiveTab('nps')}
@@ -858,6 +871,9 @@ export default function FKAdminDashboard() {
         </div>
       )}
         </>
+      ) : activeTab === 'integra-co' ? (
+        /* Pagos INTEGRA CO Tab */
+        <IntegraCODashboard />
       ) : (
         /* NPS Analytics Tab */
         <FKNPSAnalytics />

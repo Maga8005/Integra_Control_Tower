@@ -170,8 +170,8 @@ export function useAdminDashboardData(countryCode: 'CO' | 'MX' = 'CO'): UseAdmin
         operationValueNumeric: op.valorOperacion || 0,
         route: op.rutaComercial || `${op.paisExportador || 'N/A'} → ${op.paisImportador || 'N/A'}`,
         assignedPerson: op.personaAsignada || 'Sin asignar',
-        progress: op.progresoGeneral || op.progress || 0,
-        status: mapOperationStatus(op.progresoGeneral || 0),
+        progress: op.progreso || op.progresoGeneral || op.progress || 0, // Usar progreso del backend primero
+        status: mapOperationStatus(op.progreso || op.progresoGeneral || 0),
         currentPhaseName: getCurrentPhaseName(op.timeline),
         timeline: mapTimeline(op.timeline),
         updatedAt: op.ultimaActualizacion || op.updatedAt,

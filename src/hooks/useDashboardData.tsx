@@ -201,7 +201,7 @@ function mapBackendToFrontend(backendData: any[]): BackendOperationCard[] {
       operationValueNumeric: op.valorOperacion || 0,
       route: op.rutaComercial || 'Ruta no especificada',
       assignedPerson: op.personaAsignada || 'No asignado',
-      progress: op.preciseProgress?.totalProgress || op.progresoGeneral || 0,
+      progress: op.progreso || op.preciseProgress?.totalProgress || op.progresoGeneral || 0, // Usar progreso del backend
       status: mapBackendStatus(op.estados),
       currentPhaseName: getCurrentPhaseName(op.timeline),
       timeline: mapTimelineData(op.timeline), // NUEVO: Mapear timeline
@@ -414,9 +414,9 @@ export function useDashboardData(): UseDashboardDataReturn {
           operationValueNumeric: op.valorOperacion || 0,
           route: op.rutaComercial || 'Ruta no especificada',
           assignedPerson: op.personaAsignada || 'No asignado',
-          progress: op.preciseProgress?.totalProgress || op.progresoGeneral || 0,
-          status: op.progresoGeneral >= 100 ? 'completed' : 
-                 op.progresoGeneral > 0 ? 'in-progress' : 'draft',
+          progress: op.progreso || op.preciseProgress?.totalProgress || op.progresoGeneral || 0, // Usar progreso del backend
+          status: (op.progreso || op.progresoGeneral) >= 100 ? 'completed' :
+                 (op.progreso || op.progresoGeneral) > 0 ? 'in-progress' : 'draft',
           currentPhaseName: op.timeline?.[0]?.fase || 'Sin fase',
           timeline,
           updatedAt: op.ultimaActualizacion,
@@ -504,9 +504,9 @@ export function useDashboardData(): UseDashboardDataReturn {
           operationValueNumeric: op.valorOperacion || 0,
           route: op.rutaComercial || 'Ruta no especificada',
           assignedPerson: op.personaAsignada || 'No asignado', // MAPEO CORRECTO
-          progress: op.preciseProgress?.totalProgress || op.progresoGeneral || 0,
-          status: op.status || (op.progresoGeneral >= 100 ? 'completed' : 
-                               op.progresoGeneral > 0 ? 'in-progress' : 'draft'),
+          progress: op.progreso || op.preciseProgress?.totalProgress || op.progresoGeneral || 0, // Usar progreso del backend
+          status: op.status || ((op.progreso || op.progresoGeneral) >= 100 ? 'completed' :
+                               (op.progreso || op.progresoGeneral) > 0 ? 'in-progress' : 'draft'),
           currentPhaseName: (() => {
             // Encontrar el último estado en progreso o el último completado
             if (op.timeline && Array.isArray(op.timeline)) {
