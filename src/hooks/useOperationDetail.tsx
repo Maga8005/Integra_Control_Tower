@@ -314,7 +314,7 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
         valorTotal: foundOperation.valorTotal,
         valorOperacion: foundOperation.valorOperacion || foundOperation.valorTotal,
         moneda: foundOperation.moneda || foundOperation.monedaPago,
-        progresoGeneral: foundOperation.progresoGeneral,
+        progresoGeneral: foundOperation.progreso || foundOperation.progresoGeneral || 0, // Mapear desde progreso del backend
         personaAsignada: foundOperation.personaAsignada,
         paisExportador: foundOperation.paisExportador,
         paisImportador: foundOperation.paisImportador,
@@ -330,7 +330,7 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
           totalExtracostos: 0
         },
         estados: {
-          general: foundOperation.progresoGeneral > 80 ? 'completado' : 'en_proceso'
+          general: (foundOperation.progreso || foundOperation.progresoGeneral || 0) > 80 ? 'completado' : 'en_proceso'
         },
         // Map pagos to giros format for compatibility
         giros: (foundOperation.pagosProveedores || []).map((pago: any) => ({
@@ -372,10 +372,10 @@ export function useOperationDetail(operationId: string): UseOperationDetailRetur
         observaciones: foundOperation.observaciones || '',
         alertas: [],
         preciseProgress: {
-          totalProgress: foundOperation.progresoGeneral || 0,
-          completedPhases: Math.floor((foundOperation.progresoGeneral || 0) / 20),
-          currentPhase: Math.floor((foundOperation.progresoGeneral || 0) / 20),
-          nextPhase: foundOperation.progresoGeneral >= 100 ? null : Math.floor((foundOperation.progresoGeneral || 0) / 20) + 1,
+          totalProgress: foundOperation.progreso || foundOperation.progresoGeneral || 0,
+          completedPhases: Math.floor((foundOperation.progreso || foundOperation.progresoGeneral || 0) / 20),
+          currentPhase: Math.floor((foundOperation.progreso || foundOperation.progresoGeneral || 0) / 20),
+          nextPhase: (foundOperation.progreso || foundOperation.progresoGeneral || 0) >= 100 ? null : Math.floor((foundOperation.progreso || foundOperation.progresoGeneral || 0) / 20) + 1,
           phaseDetails: []
         },
         validation: {

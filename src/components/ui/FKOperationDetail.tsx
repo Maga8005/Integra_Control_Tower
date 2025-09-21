@@ -27,6 +27,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useOperationNotifications } from '../../hooks/useNotifications';
 import { useOperationDetail, BackendOperationDetail } from '../../hooks/useOperationDetail';
 import { cn } from '../../utils/cn';
+import { formatPagaIds } from '../../utils/filterPagaIds';
 import FKDocumentsTab from './FKDocumentsTab';
 import FKFinancialTimeline from './FKFinancialTimeline';
 import FKNPSModal from './FKNPSModal';
@@ -70,18 +71,28 @@ export default function FKOperationDetail({
   // Use optimized hook for single operation
   const { operation, isLoading, error, refetch } = useOperationDetail(operationId);
 
-  // 📊 CALCULAR PROGRESO REAL BASADO EN TIMELINE
-  const calculateRealProgress = (timeline: any[]): number => {
-    if (!timeline || timeline.length === 0) return 0;
+  // 📊 OBTENER PROGRESO: Primero del backend, luego calcular del timeline
+  const getOperationProgress = (): number => {
+    // Primero intentar usar el progreso del backend
+    if (operation?.progresoGeneral !== undefined && operation?.progresoGeneral !== null) {
+      console.log(`📊 Usando progreso del backend: ${operation.progresoGeneral}%`);
+      return operation.progresoGeneral;
+    }
 
-    const completedSteps = timeline.filter(step => step.estado === 'completado').length;
-    const totalSteps = timeline.length;
+    // Si no hay progreso en backend, calcular desde el timeline
+    if (operation?.timeline && operation.timeline.length > 0) {
+      const completedSteps = operation.timeline.filter(step => step.estado === 'completado').length;
+      const totalSteps = operation.timeline.length;
+      const calculatedProgress = Math.round((completedSteps / totalSteps) * 100);
+      console.log(`📊 Progreso calculado desde timeline: ${calculatedProgress}%`);
+      return calculatedProgress;
+    }
 
-    return Math.round((completedSteps / totalSteps) * 100);
+    return 0;
   };
 
-  // Usar progreso real calculado del timeline
-  const realProgress = operation ? calculateRealProgress(operation.timeline || []) : 0;
+  // Usar progreso del backend o calculado
+  const realProgress = getOperationProgress();
 
   // 🆕 Sistema NPS integrado
   const nps = useNPS({
@@ -390,11 +401,14 @@ function OverviewTab({ operation, onStatusUpdate, realProgress }: OverviewTabPro
                   <span className="font-medium">ID Integra:</span> {operation.id_integra}
                 </p>
               )}
-              {operation.ids_paga && (
-                <p className="text-xs text-gray-500">
-                  <span className="font-medium">IDs Paga:</span> {operation.ids_paga}
-                </p>
-              )}
+              {(() => {
+                const filteredPagaIds = formatPagaIds(operation.ids_paga);
+                return filteredPagaIds && (
+                  <p className="text-xs text-gray-500">
+                    <span className="font-medium">IDs Paga:</span> {filteredPagaIds}
+                  </p>
+                );
+              })()}
             </div>
           </div>
           <div>
@@ -1246,18 +1260,35 @@ interface FinancialTabProps {
 function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTabProps) {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'analyst';
-  
+
   // Preparar datos para el timeline financiero usando datos reales de Supabase
   const prepareFinancialSummary = () => {
     // Agregar costos logísticos desde Supabase
     const costosLogisticosRaw = operation.costosLogisticos || [];
+
+    // 🚚 LÓGICA DE NEGOCIO CENTRAL: Si existe entrega de mercancía, los costos logísticos están pagados
+    const tieneEntregaMercancia = operation.timeline?.some(t =>
+      t.fase?.toLowerCase().includes('entrega') &&
+      t.fase?.toLowerCase().includes('mercancía') &&
+      (t.estado === 'completado' || t.estado === 'en_proceso')
+    ) || false;
+
+    console.log('🚚 [RESUMEN FINANCIERO] Lógica inteligente aplicada:', {
+      tieneEntregaMercancia,
+      costosLogisticosCount: costosLogisticosRaw.length,
+      timeline: operation.timeline?.map(t => ({ fase: t.fase, estado: t.estado }))
+    });
+
     const costosLogisticos = {
       flete: costosLogisticosRaw.find(c => c.tipo_costo === 'flete')?.monto || 0,
       seguro: costosLogisticosRaw.find(c => c.tipo_costo === 'seguro')?.monto || 0,
       gastosOrigen: costosLogisticosRaw.find(c => c.tipo_costo === 'gastos_origen')?.monto || 0,
+      gastosDestino: costosLogisticosRaw.find(c => c.tipo_costo === 'gastos_destino')?.monto || 0,
       total: costosLogisticosRaw.reduce((sum, c) => sum + (c.monto || 0), 0),
       fechaPago: costosLogisticosRaw.find(c => c.fecha_pago)?.fecha_pago,
-      estado: costosLogisticosRaw.length > 0 ? costosLogisticosRaw[0].estado : 'pendiente'
+      // 🆕 ESTADO INTELIGENTE: Si hay entrega de mercancía = costos pagados
+      estado: tieneEntregaMercancia ? 'completado' :
+              (costosLogisticosRaw.length > 0 ? costosLogisticosRaw[0].estado : 'pendiente')
     };
 
     // Mapear extracostos desde Supabase
@@ -1290,7 +1321,7 @@ function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTa
 
     const totalPagado = (cuotaOperacional?.estado === 'completado' ? cuotaOperacional.monto : 0) +
                        (avanceSegundo?.estado === 'completado' ? avanceSegundo.monto : 0) +
-                       (costosLogisticos.estado_pago === 'completado' ? costosLogisticos.total_logisticos : 0) +
+                       (costosLogisticos.estado === 'completado' ? costosLogisticos.total : 0) +
                        extracostos.filter(e => e.estado === 'completado').reduce((sum, e) => sum + e.monto, 0);
 
     const totalPendiente = operation.valorTotal - totalPagado;
@@ -1302,10 +1333,11 @@ function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTa
       costosLogisticos: {
         flete: costosLogisticos.flete,
         seguro: costosLogisticos.seguro,
-        gastosOrigen: costosLogisticos.gastos_origen,
-        total: costosLogisticos.total_logisticos,
-        fechaPago: costosLogisticos.fecha_pago,
-        estado: costosLogisticos.estado_pago
+        gastosOrigen: costosLogisticos.gastosOrigen,
+        gastosDestino: costosLogisticos.gastosDestino,
+        total: costosLogisticos.total,
+        fechaPago: costosLogisticos.fechaPago,
+        estado: costosLogisticos.estado
       },
       extracostos,
       reembolsos,
@@ -1318,6 +1350,28 @@ function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTa
 
   return (
     <div className="space-y-6">
+      {/* 🔗 Identificadores de Seguimiento - Movido desde Resumen */}
+      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+        <h5 className="text-sm font-medium text-blue-900 mb-2">🔗 Identificadores de Seguimiento</h5>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="bg-white rounded p-3">
+            <p className="text-xs text-blue-600 font-medium">ID Integra</p>
+            <p className="text-sm font-mono text-blue-900">
+              {operation.id_integra || 'No asignado'}
+            </p>
+          </div>
+          <div className="bg-white rounded p-3">
+            <p className="text-xs text-blue-600 font-medium">IDs Paga</p>
+            <p className="text-sm font-mono text-blue-900 whitespace-pre-line">
+              {(() => {
+                const filteredIds = formatPagaIds(operation.ids_paga, '\n');
+                return filteredIds || 'No asignado';
+              })()}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-gray-900">Timeline de Pagos y Financiamiento</h4>
         <div className="text-sm text-gray-500">
@@ -1325,41 +1379,38 @@ function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTa
         </div>
       </div>
 
-      {/* Información de IDs de seguimiento usando datos reales de Supabase */}
-      {(operation.id_integra || operation.ids_paga) && (
-        <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-          <h5 className="text-sm font-medium text-blue-900 mb-2">🔗 Identificadores de Seguimiento</h5>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {operation.id_integra && (
-              <div className="bg-white rounded p-3">
-                <p className="text-xs text-blue-600 font-medium">ID Integra</p>
-                <p className="text-sm font-mono text-blue-900">{operation.id_integra}</p>
-              </div>
-            )}
-            {operation.ids_paga && (
-              <div className="bg-white rounded p-3">
-                <p className="text-xs text-blue-600 font-medium">IDs Paga</p>
-                <p className="text-sm font-mono text-blue-900">{operation.ids_paga}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Timeline financiero integrado con datos reales de Supabase */}
+      {/* Timeline financiero integrado con datos procesados con lógica inteligente */}
       <FKFinancialTimeline
         operationId={operation.id}
         moneda={operation.moneda || 'USD'}
         proveedorBeneficiario={operation.proveedorBeneficiario}
         resumenFinanciero={resumenFinanciero}
-        costosLogisticos={operation.costosLogisticos || []}
+        costosLogisticos={(() => {
+          // 🚚 APLICAR LÓGICA INTELIGENTE: Si hay entrega de mercancía, costos están pagados
+          const costosRaw = operation.costosLogisticos || [];
+          const tieneEntregaMercancia = operation.timeline?.some(t =>
+            t.fase?.toLowerCase().includes('entrega') &&
+            t.fase?.toLowerCase().includes('mercancía') &&
+            (t.estado === 'completado' || t.estado === 'en_proceso')
+          ) || false;
+
+          console.log('🚚 [TIMELINE FINANCIERO] Aplicando lógica inteligente:', {
+            tieneEntregaMercancia,
+            costosOriginales: costosRaw.length,
+            timeline: operation.timeline?.map(t => ({ fase: t.fase, estado: t.estado }))
+          });
+
+          // Mapear costos aplicando estado inteligente
+          return costosRaw.map(costo => ({
+            ...costo,
+            estado: tieneEntregaMercancia ? 'completado' : (costo.estado || 'pendiente')
+          }));
+        })()}
         extracostosOperacion={operation.extracostosOperacion || []}
         reembolsosOperacion={operation.reembolsosOperacion || []}
         pagosClientes={operation.pagosClientes || []}
         pagosProveedores={operation.pagosProveedores || []}
         giros={operation.giros || []}
-        idIntegra={operation.id_integra || null}
-        idsPaga={operation.ids_paga || null}
         liberaciones={operation.liberaciones || []}
         timeline={operation.timeline || []}
         isAdmin={isAdmin}
