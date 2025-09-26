@@ -321,12 +321,53 @@ export default function FKFinancialTimeline({
   const timelineEvents = useMemo(() => {
     const events: FinancialTimelineEvent[] = [];
 
+    // Función helper para determinar estado basado en fechas (movida aquí para evitar error de inicialización)
+    const determinarEstadoPorFecha = (fechaSolicitud?: string, fechaPagoRealizado?: string, estadoOriginal?: string): EstadoProceso => {
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+
+      // Si tiene fecha de pago realizado
+      if (fechaPagoRealizado) {
+        const fechaPago = new Date(fechaPagoRealizado);
+        fechaPago.setHours(0, 0, 0, 0);
+
+        console.log(`📅 [ESTADO AUTO] Evaluando pago - Fecha pago: ${fechaPagoRealizado}, Hoy: ${hoy.toISOString().split('T')[0]}`);
+
+        if (fechaPago <= hoy) {
+          console.log(`✅ [ESTADO AUTO] Pago completado (fecha pasada)`);
+          return EstadoProceso.COMPLETADO; // Ya se pagó
+        } else {
+          console.log(`⏳ [ESTADO AUTO] Pago en proceso (fecha futura)`);
+          return EstadoProceso.EN_PROCESO; // Pago programado para el futuro
+        }
+      }
+
+      // Si tiene fecha de solicitud pero no de pago
+      if (fechaSolicitud) {
+        console.log(`📋 [ESTADO AUTO] Tiene solicitud sin pago - EN_PROCESO`);
+        return EstadoProceso.EN_PROCESO; // Solicitado pero no pagado
+      }
+
+      // Si no tiene ninguna fecha, usar el estado original
+      console.log(`❓ [ESTADO AUTO] Sin fechas - usando estado original: ${estadoOriginal || 'pendiente'}`);
+
+      if (!estadoOriginal || estadoOriginal === 'pendiente') {
+        return EstadoProceso.PENDIENTE;
+      } else if (estadoOriginal === 'completado' || estadoOriginal === 'pagado') {
+        return EstadoProceso.COMPLETADO;
+      } else if (estadoOriginal === 'en_proceso' || estadoOriginal === 'solicitado') {
+        return EstadoProceso.EN_PROCESO;
+      } else {
+        return EstadoProceso.PENDIENTE;
+      }
+    };
+
     // 🔍 DEBUG: Verificar estado de factura cuota operacional
-    const solicitudEnviadaPhase = timeline.find(phase => 
-      phase.fase?.toLowerCase().includes('solicitud') && 
+    const solicitudEnviadaPhase = timeline.find(phase =>
+      phase.fase?.toLowerCase().includes('solicitud') &&
       (phase.estado === 'completado' || phase.descripcion?.toLowerCase().includes('listo'))
     );
-    
+
     const esCuotaOperacionalLista = !!solicitudEnviadaPhase;
     
     console.log('📋 [CUOTA OPERACIONAL] Estado de factura:', {
@@ -439,41 +480,6 @@ export default function FKFinancialTimeline({
       })) || [],
       totalSinFiltrar: extracostosOperacion?.reduce((sum, e) => sum + (e.monto || 0), 0) || 0
     });
-    
-    // Función helper para determinar estado basado en fechas
-    const determinarEstadoPorFecha = (fechaSolicitud?: string, fechaPagoRealizado?: string, estadoOriginal?: string): EstadoProceso => {
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-      
-      // Si tiene fecha de pago realizado
-      if (fechaPagoRealizado) {
-        const fechaPago = new Date(fechaPagoRealizado);
-        fechaPago.setHours(0, 0, 0, 0);
-        
-        console.log(`📅 [ESTADO AUTO] Evaluando pago - Fecha pago: ${fechaPagoRealizado}, Hoy: ${hoy.toISOString().split('T')[0]}`);
-        
-        if (fechaPago <= hoy) {
-          console.log(`✅ [ESTADO AUTO] Pago completado (fecha pasada)`);
-          return EstadoProceso.COMPLETADO; // Ya se pagó
-        } else {
-          console.log(`⏳ [ESTADO AUTO] Pago en proceso (fecha futura)`);
-          return EstadoProceso.EN_PROCESO; // Pago programado para el futuro
-        }
-      }
-      
-      // Si tiene fecha de solicitud pero no de pago
-      if (fechaSolicitud) {
-        console.log(`📋 [ESTADO AUTO] Tiene solicitud sin pago - EN_PROCESO`);
-        return EstadoProceso.EN_PROCESO; // Solicitado pero no pagado
-      }
-      
-      // Si no tiene fechas, usar estado original o pendiente
-      if (estadoOriginal === 'completado') return EstadoProceso.COMPLETADO;
-      if (estadoOriginal === 'en_proceso') return EstadoProceso.EN_PROCESO;
-      
-      console.log(`⚪ [ESTADO AUTO] Sin fechas disponibles - PENDIENTE`);
-      return EstadoProceso.PENDIENTE;
-    };
 
     // 💰 INTERCALAR PAGOS: Primer Pago → Segundo Anticipo → Resto de Pagos
     pagosProveedoresReales.forEach((pago, index) => {

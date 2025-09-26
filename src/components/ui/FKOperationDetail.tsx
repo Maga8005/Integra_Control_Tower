@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -94,14 +94,17 @@ export default function FKOperationDetail({
   // Usar progreso del backend o calculado
   const realProgress = getOperationProgress();
 
-  // 🆕 Sistema NPS integrado
+  // 🆕 Sistema NPS integrado - Calculamos el país de forma segura
+  const countryForNPS = useMemo(() => {
+    if (!operation?.paisImportador) return 'COL'; // Default a Colombia
+    const pais = operation.paisImportador.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return (pais === 'colombia') ? 'COL' : 'MEX';
+  }, [operation?.paisImportador]);
+
   const nps = useNPS({
     operationId: operationId,
     clientId: operation?.clienteNit || '',
-    country: (() => {
-      const pais = operation?.paisImportador?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      return (pais === 'colombia') ? 'COL' : 'MEX';
-    })(),
+    country: countryForNPS,
     currentProgress: realProgress // 🔄 USAR PROGRESO REAL EN LUGAR DEL DEL BACKEND
   });
 
@@ -1261,6 +1264,13 @@ function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTa
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'analyst';
 
+  // Calculamos el país de forma segura para evitar errores de inicialización
+  const countryForNPS = useMemo(() => {
+    if (!operation?.paisImportador) return 'COL'; // Default a Colombia
+    const pais = operation.paisImportador.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return (pais === 'colombia') ? 'COL' : 'MEX';
+  }, [operation?.paisImportador]);
+
   // Preparar datos para el timeline financiero usando datos reales de Supabase
   const prepareFinancialSummary = () => {
     // Agregar costos logísticos desde Supabase
@@ -1424,10 +1434,7 @@ function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTa
           operationId,
           clientId: operation?.clienteNit || '',
           progressPercentage: realProgress,
-          country: (() => {
-            const pais = operation?.paisImportador?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return (pais === 'colombia') ? 'COL' : 'MEX';
-          })()
+          country: countryForNPS
         });
         return null;
       })()}
@@ -1440,10 +1447,7 @@ function FinancialTab({ operation, nps, operationId, realProgress }: FinancialTa
           clientId={operation?.clienteNit || ''}
           stage={nps.currentStage || 'inicio'}
           progressPercentage={realProgress}
-          country={(() => {
-            const pais = operation?.paisImportador?.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return (pais === 'colombia') ? 'COL' : 'MEX';
-          })()}
+          country={countryForNPS}
           onSubmit={nps.submitNPSResponse}
         />
       )}
